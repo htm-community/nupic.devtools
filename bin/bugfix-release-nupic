@@ -1,0 +1,251 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import subprocess
+from optparse import OptionParser
+
+parser = OptionParser(
+  usage="%prog [options]\n\nPushes a new NuPIC release."
+)
+
+VERSION_FILE = "VERSION"
+CHANGELOG_FILE = "CHANGELOG.md"
+DOXYFILE = "docs/Doxyfile"
+INIT_FILE = "nupic/__init__.py"
+
+DEV_SUFFIX = "-dev"
+NUPIC = os.environ["NUPIC"]
+CWD = os.getcwd()
+
+DEFAULT_REMOTE = "upstream"
+
+verbose = False
+
+
+parser.add_option(
+  "-v",
+  "--verbose",
+  action="store_true",
+  default=False,
+  dest="verbose",
+  help="Print debugging statements.")
+
+parser.add_option(
+  "-d",
+  "--dry_run",
+  action="store_true",
+  default=False,
+  dest="dry_run",
+  help="Prevents pushing to remote master branch.")
+
+parser.add_option(
+  "-r",
+  "--remote",
+  default=DEFAULT_REMOTE,
+  dest="remote",
+  help="Which remote location to push to (default 'upstream').")
+
+
+
+def replace_in_file(from_value, to_value, file_path):
+  with open(file_path, "r") as f:
+    contents = f.read()
+  with open(file_path, "wb") as f:
+    f.write(contents.replace(from_value, to_value))
+
+
+
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
+
+
+
+def debug(msg):
+  if verbose:
+    print msg
+
+
+
+def create_release(remote, dry_run=False):
+  os.chdir(NUPIC)
+
+  with open(VERSION_FILE, "r") as f:
+    dev_version = f.read().replace('\n', '')
+
+  release_version = dev_version.split("-")[0]
+  release_split = [int(i) for i in release_version.split('.')]
+  release_split[-1] -= 1
+  previous_version = ".".join([str(i) for i in release_split])
+
+  print "Updating version from %s to %s." % (dev_version, release_version)
+  print "Last release was %s" % previous_version
+
+  git_command = "git log %s..HEAD --oneline" % previous_version
+  debug(git_command)
+  gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
+
+  # Remove the last log line, because it will just be a commit bumping the version
+  # to X.Y.Z-dev.
+  del gitlog[-1]
+
+  if len(gitlog) == 0:
+    print "Release contains no changes. Bailing out!"
+    exit(-1)
+
+  print "This release contains %i commit(s)." % len(gitlog)
+
+  # string the SHAs off the beginnings of the commit messages
+  gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
+
+  print "\nUpdating files..."
+  debug("\tUpdating VERSION...")
+  replace_in_file(dev_version, release_version, VERSION_FILE)
+
+  debug("\tUpdating Doxyfile...")
+  replace_in_file(dev_version, release_version, DOXYFILE)
+
+  debug("\tUpdating nupic/__init__.py...")
+  replace_in_file(dev_version, release_version, INIT_FILE)
+
+  debug("\tUpdating CHANGELOG.md...")
+  # This is a bit more complex than a substitution.
+  with open(CHANGELOG_FILE, "r") as f:
+    changelog_contents = f.readlines()
+
+  new_changelog_contents = []
+  for line in changelog_contents:
+    if line == "## %s\n" % dev_version:
+      new_changelog_contents.append("## %s\n\n" % release_version)
+      for log_line in gitlog:
+        include = "Include this change in the CHANGELOG?\n\t\"%s\"" % log_line
+        if query_yes_no(include):
+          new_changelog_contents.append("* %s\n" % log_line)
+    else:
+      new_changelog_contents.append(line)
+
+  with open(CHANGELOG_FILE, "wb") as f:
+    f.writelines(new_changelog_contents)
+
+  print "\nCommitting release..."
+  git_command = "git commit -am \"Release %s.\" --no-verify" % release_version
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+
+  print "\nTagging release..."
+  git_command = "git tag -a %s -m \"Release %s\"" \
+                % (release_version, release_version)
+  debug(git_command)
+  subprocess.call(
+    git_command,
+    shell=True
+  )
+
+  if not dry_run:
+    print "\nPushing %s..." % remote
+    git_command = "git push %s master" % remote
+    debug(git_command)
+    subprocess.call(
+      git_command,
+      shell=True
+    )
+    git_command = "git push %s %s" % (remote, release_version)
+    debug(git_command)
+    subprocess.call(
+      git_command,
+      shell=True
+    )
+
+
+
+def create_development_version(remote, dry_run=False):
+  with open(VERSION_FILE, "r") as f:
+    last_version = f.read().replace('\n', '')
+
+  dev_split = [int(i) for i in last_version.split('.')]
+  dev_split[-1] += 1
+  next_version = ".".join([str(i) for i in dev_split])
+  dev_version = "%s%s" % (next_version, DEV_SUFFIX)
+
+  print "Updating version from %s to %s." % (last_version, dev_version)
+
+  print "\nUpdating files..."
+  debug("\tUpdating VERSION...")
+  replace_in_file(last_version, dev_version, VERSION_FILE)
+
+  debug("\tUpdating Doxyfile...")
+  replace_in_file(last_version, dev_version, DOXYFILE)
+
+  debug("\tUpdating nupic/__init__.py...")
+  replace_in_file(last_version, dev_version, INIT_FILE)
+
+  debug("\tUpdating CHANGELOG.md...")
+  # This is a bit more complex than a substitution.
+  with open(CHANGELOG_FILE, "r") as f:
+    changelog_contents = f.readlines()
+
+  new_changelog_contents = []
+  for line in changelog_contents:
+    if line == "# Changelog\n":
+      new_changelog_contents.append(line)
+      new_changelog_contents.append("\n## %s\n" % (dev_version))
+    else:
+      new_changelog_contents.append(line)
+
+  with open(CHANGELOG_FILE, "wb") as f:
+    f.writelines(new_changelog_contents)
+
+  print "\nCommitting dev version..."
+  git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
+                % dev_version
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+
+  if not dry_run:
+    print "\nPushing %s..." % remote
+    git_command = "git push %s master" % remote
+    subprocess.call(git_command, shell=True)
+
+
+
+if __name__ == "__main__":
+  (options, args) = parser.parse_args(sys.argv[1:])
+
+  verbose = options.verbose
+
+  create_release(
+    options.remote, dry_run=options.dry_run
+  )
+  create_development_version(
+    options.remote, dry_run=options.dry_run
+  )
+  os.chdir(CWD)
