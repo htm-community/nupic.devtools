@@ -202,6 +202,7 @@ def create_release(remote, dry_run=False):
     debug(git_command)
     subprocess.call(git_command, shell=True)
 
+  return release_version
 
 
 def create_development_version(remote, dry_run=False):
@@ -213,7 +214,7 @@ def create_development_version(remote, dry_run=False):
   next_version = ".".join([str(i) for i in dev_split])
   dev_version = "%s%s" % (next_version, DEV_SUFFIX)
 
-  print "Updating version from %s to %s." % (last_version, dev_version)
+  print "\nUpdating version from %s to %s." % (last_version, dev_version)
 
   print "\nUpdating files..."
   debug("\tUpdating VERSION...")
@@ -259,10 +260,15 @@ if __name__ == "__main__":
 
   verbose = options.verbose
 
-  create_release(
-    options.remote, dry_run=options.dry_run
-  )
-  create_development_version(
-    options.remote, dry_run=options.dry_run
-  )
+  release_number = create_release(options.remote, dry_run=options.dry_run)
+  create_development_version(options.remote, dry_run=options.dry_run)
+
+  if options.dry_run:
+    print "%s was committed and tagged locally but not pushed to %s." \
+          % (release_number, options.remote)
+  else:
+    print "\nDone releasing %s." % release_number
+    print "See https://github.com/numenta/nupic/releases/tag/%s" \
+          % release_number
+
   os.chdir(CWD)
