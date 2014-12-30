@@ -56,6 +56,19 @@ def replace_in_file(from_value, to_value, file_path):
 
 
 
+def debug(msg):
+  if verbose:
+    print msg
+
+
+
+def die(msg):
+  print msg
+  print "You might need to 'git reset --hard upstream/master`."
+  exit(-1)
+
+
+
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
 
@@ -90,19 +103,6 @@ def query_yes_no(question, default="yes"):
 
 
 
-def debug(msg):
-  if verbose:
-    print msg
-
-
-
-def die(msg):
-  print msg
-  print "You might need to 'git reset --hard upstream/master`."
-  exit(-1)
-
-
-
 def tag_exists(tag):
   git_command = "git tag"
   debug(git_command)
@@ -111,8 +111,29 @@ def tag_exists(tag):
 
 
 
+def repo_needs_update(remote):
+  debug("Checking if local repo needs to be synced with %s..." % remote)
+
+  git_command = "git fetch %s" % remote
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+
+  # This gives us a log of all the commits on <remote>/master that aren't on
+  # the local checkout's HEAD.
+  git_command = "git log HEAD..%s/master --oneline" % remote
+  debug(git_command)
+  gitlog = subprocess.check_output(git_command, shell=True).strip()
+
+  # If the output is not empty, then the repo needs updating.
+  return len(gitlog) > 0
+
+
+
 def create_release(remote, dry_run=False):
   os.chdir(NUPIC)
+
+  if repo_needs_update(remote):
+    die("Your local repo is not up to date with upstream/master, please sync!")
 
   with open(VERSION_FILE, "r") as f:
     dev_version = f.read().replace('\n', '')
