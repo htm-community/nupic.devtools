@@ -96,6 +96,21 @@ def debug(msg):
 
 
 
+def die(msg):
+  print msg
+  print "You might need to 'git reset --hard upstream/master`."
+  exit(-1)
+
+
+
+def tag_exists(tag):
+  git_command = "git tag"
+  debug(git_command)
+  existing_tags = subprocess.check_output(git_command, shell=True).strip().split("\n")
+  return tag in existing_tags
+
+
+
 def create_release(remote, dry_run=False):
   os.chdir(NUPIC)
 
@@ -119,8 +134,7 @@ def create_release(remote, dry_run=False):
   del gitlog[-1]
 
   if len(gitlog) == 0:
-    print "Release contains no changes. Bailing out!"
-    exit(-1)
+    die("Release contains no changes. Bailing out!")
 
   print "This release contains %i commit(s)." % len(gitlog)
 
@@ -162,28 +176,31 @@ def create_release(remote, dry_run=False):
   subprocess.call(git_command, shell=True)
 
   print "\nTagging release..."
+  if tag_exists(release_version):
+    delete_tag = query_yes_no(
+      "Tag %s already exists! Delete it?" % release_version
+    )
+    if delete_tag:
+      git_command = "git tag -d %s" % release_version
+      debug(git_command)
+      subprocess.call(git_command, shell=True)
+    else:
+      die("A tag for release %s already exists." % release_version)
+
   git_command = "git tag -a %s -m \"Release %s\"" \
                 % (release_version, release_version)
   debug(git_command)
-  subprocess.call(
-    git_command,
-    shell=True
-  )
+  subprocess.call(git_command, shell=True)
 
   if not dry_run:
-    print "\nPushing %s..." % remote
+    print "\nPushing to %s..." % remote
     git_command = "git push %s master" % remote
     debug(git_command)
-    subprocess.call(
-      git_command,
-      shell=True
-    )
+    subprocess.call(git_command, shell=True)
+    
     git_command = "git push %s %s" % (remote, release_version)
     debug(git_command)
-    subprocess.call(
-      git_command,
-      shell=True
-    )
+    subprocess.call(git_command, shell=True)
 
 
 
