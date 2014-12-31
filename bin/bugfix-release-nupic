@@ -64,7 +64,6 @@ def debug(msg):
 
 def die(msg):
   print msg
-  print "You might need to 'git reset --hard upstream/master`."
   exit(-1)
 
 
@@ -111,6 +110,17 @@ def tag_exists(tag):
 
 
 
+def bail_out(msg):
+  debug("Checking out changed files before bailing out...")
+
+  git_command = "git checkout %s %s %s %s" \
+                % (CHANGELOG_FILE, VERSION_FILE, DOXYFILE, INIT_FILE)
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+  die(msg)
+
+
+
 def repo_needs_update(remote):
   debug("Checking if local repo needs to be synced with %s..." % remote)
 
@@ -148,10 +158,11 @@ def create_release(remote, dry_run=False):
 
   git_command = "git log %s..HEAD --oneline" % previous_version
   debug(git_command)
+  # These are all the commit messages since the last release.
   gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
 
-  # Remove the last log line, because it will just be a commit bumping the version
-  # to X.Y.Z-dev.
+  # Remove the last log line, because it will just be a commit bumping the
+  # version to X.Y.Z-dev.
   del gitlog[-1]
 
   if len(gitlog) == 0:
@@ -159,10 +170,11 @@ def create_release(remote, dry_run=False):
 
   print "This release contains %i commit(s)." % len(gitlog)
 
-  # string the SHAs off the beginnings of the commit messages
+  # Strip the SHAs off the beginnings of the commit messages.
   gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
 
   print "\nUpdating files..."
+
   debug("\tUpdating VERSION...")
   replace_in_file(dev_version, release_version, VERSION_FILE)
 
@@ -179,14 +191,28 @@ def create_release(remote, dry_run=False):
 
   new_changelog_contents = []
   for line in changelog_contents:
-    if line == "## %s\n" % dev_version:
-      new_changelog_contents.append("## %s\n\n" % release_version)
+    # At the top of the changelog, add a line for this release version.
+    if line == "# Changelog\n":
+      new_changelog_contents.append(line)
+      new_changelog_contents.append("\n## %s\n\n" % release_version)
+      changelog_count = 0
+      # Loop through all the git log messages since the last version.
       for log_line in gitlog:
+        # Ask the user doing the release if they want each commit message in the
+        # changelog.
         include = "Include this change in the CHANGELOG?\n\t\"%s\"" % log_line
         if query_yes_no(include):
+          changelog_count += 1
           new_changelog_contents.append("* %s\n" % log_line)
     else:
       new_changelog_contents.append(line)
+
+  # If the user doing the release didn't choose any messages to put in the
+  # changelog, something is wrong. A release should always have chagnes in the
+  # changelog.
+  if changelog_count == 0:
+    bail_out("You must choose at least one commit message to add to the "
+             "CHANGELOG file.")
 
   with open(CHANGELOG_FILE, "wb") as f:
     f.writelines(new_changelog_contents)
@@ -247,22 +273,6 @@ def create_development_version(remote, dry_run=False):
   debug("\tUpdating nupic/__init__.py...")
   replace_in_file(last_version, dev_version, INIT_FILE)
 
-  debug("\tUpdating CHANGELOG.md...")
-  # This is a bit more complex than a substitution.
-  with open(CHANGELOG_FILE, "r") as f:
-    changelog_contents = f.readlines()
-
-  new_changelog_contents = []
-  for line in changelog_contents:
-    if line == "# Changelog\n":
-      new_changelog_contents.append(line)
-      new_changelog_contents.append("\n## %s\n" % (dev_version))
-    else:
-      new_changelog_contents.append(line)
-
-  with open(CHANGELOG_FILE, "wb") as f:
-    f.writelines(new_changelog_contents)
-
   print "\nCommitting dev version..."
   git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
                 % dev_version
@@ -285,8 +295,12 @@ if __name__ == "__main__":
   create_development_version(options.remote, dry_run=options.dry_run)
 
   if options.dry_run:
-    print "%s was committed and tagged locally but not pushed to %s." \
+    print "\n%s was committed and tagged locally but not pushed to %s." \
           % (release_number, options.remote)
+    print "To reset your local repository to the state it was in before this " \
+          "process:"
+    print "\tgit reset --hard upstream/master"
+    print "\tgit tag -d %s" % release_number
   else:
     print "\nDone releasing %s." % release_number
     print "See https://github.com/numenta/nupic/releases/tag/%s" \
