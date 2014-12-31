@@ -1,18 +1,6 @@
 #!/usr/bin/env bash
 
-git_status=$( (git status) 2>&1 )
-
-if [ "$git_status" = "fatal: Not a git repository (or any of the parent directories): .git" ]; then
-    echo "Must execute within nupic.core repository!"
-    exit
-fi
-
-repo=`basename \`git rev-parse --show-toplevel\``
-
-if [ "$repo" != "nupic.core" ]; then
-    echo "Must execute within nupic.core repository!"
-    exit
-fi
+pushd "$NUPIC_CORE"
 
 echo Clearing out existing build directory..
 rm -rf build
@@ -33,3 +21,5 @@ make -j6
 echo
 echo Installing...
 make install
+
+popd
