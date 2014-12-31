@@ -4,22 +4,6 @@
 
 pushd "$NUPIC"
 
-expected_repo="nupic"
-echo "Checking that we're in ${expected_repo} repo..."
-git_status=$( (git status) 2>&1 )
-
-if [ "$git_status" = "fatal: Not a git repository (or any of the parent directories): .git" ]; then
-    echo "Must execute within ${expected_repo} repository!"
-    exit
-fi
-
-repo=`basename \`git rev-parse --show-toplevel\``
-
-if [ "$repo" != "${expected_repo}" ]; then
-    echo "Must execute within ${expected_repo} repository!"
-    exit
-fi
-
 echo Clearing out existing build and dist directories..
 rm -rf build dist
 
