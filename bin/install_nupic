@@ -29,7 +29,28 @@ core_release_dir=''
 default_core_release_dir="${NUPIC_CORE}/build/release"
 
 print_usage () {
-  echo "Installs NuPIC from $NUPIC directory."
+  echo "Installs NuPIC from $NUPIC directory. If nupic.core release directory"
+  echo "is not specified with -u or -r options (see below), the nupic.core"
+  echo "binary package is downloaded."
+  echo
+  echo "Usage:"
+  echo "> install_nupic [options]"
+  echo
+  echo "Options:"
+  echo " -c Clean build, removes old build artifacts."
+  echo " -v Verbose console output."
+  echo " -u Builds using nupic.core release at ${default_core_release_dir}"
+  echo " -r <release-dir> Builds using nupic.core release at specified "
+  echo "    directory instead of ${default_core_release_dir}."
+  echo
+  echo "Examples:"
+  echo "An installation using downloaded nupic.core binary release:"
+  echo "    > install_nupic"
+  echo "A clean verbose installation using nupic.core at "
+  echo "${default_core_release_dir}:"
+  echo "    > install_nupic -cvu"
+  echo "A clean installation using nupic.core at specified location (/tmp):"
+  echo "    > install_nupic -cv -r /tmp"
 }
 
 # cmd line options processing

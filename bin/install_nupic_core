@@ -33,22 +33,22 @@ print_usage () {
   echo "-r or -s options (see below)."
   echo
   echo "Usage:"
-  echo "> install_core [options]"
+  echo "> install_nupic_core [options]"
   echo
   echo "Options:"
-  echo " -c clean build"
-  echo " -v verbose console output"
+  echo " -c Clean build, removes old build artifacts."
+  echo " -v Verbose console output."
   echo " -s build into system location (if specified, -r is ignored)"
   echo " -r <release-dir> outputs release to specified directory instead of"
-  echo "    $NUPIC_CORE/build/release (default)"
+  echo "    ${release_dir} (default)"
   echo
   echo "Examples:"
-  echo "An installation to default location at $NUPIC_CORE/build/release:"
-  echo "> install_core"
+  echo "An installation to default location at ${release_dir}:"
+  echo "    > install_nupic_core"
   echo "A clean verbose installation to system location:"
-  echo "> install_core -cvs"
-  echo "A clean installation to specified location:"
-  echo "> install_core -c -r /tmp"
+  echo "    > install_nupic_core -cvs"
+  echo "A clean installation to specified location (/tmp):"
+  echo "    > install_nupic_core -c -r /tmp"
 }
 
 # cmd line options processing
