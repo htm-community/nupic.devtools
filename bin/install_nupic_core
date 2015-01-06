@@ -20,21 +20,40 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-: ${NUPIC:?"You must set the NUPIC environment variable."}
 : ${NUPIC_CORE:?"You must set the NUPIC_CORE environment variable."}
 
 clean_build=0
+system=0
 verbose=''
-core_release_dir=''
-default_core_release_dir="${NUPIC_CORE}/build/release"
+release_dir="${NUPIC_CORE}/build/release"
 
 print_usage () {
-  echo "Installs NuPIC from $NUPIC directory."
+  echo "Installs nupic.core from $NUPIC_CORE directory. By default, this"
+  echo "installs into $NUPIC_CORE/build/release, but can be overridden with the"
+  echo "-r or -s options (see below)."
+  echo
+  echo "Usage:"
+  echo "> install_core [options]"
+  echo
+  echo "Options:"
+  echo " -c clean build"
+  echo " -v verbose console output"
+  echo " -s build into system location (if specified, -r is ignored)"
+  echo " -r <release-dir> outputs release to specified directory instead of"
+  echo "    $NUPIC_CORE/build/release (default)"
+  echo
+  echo "Examples:"
+  echo "An installation to default location at $NUPIC_CORE/build/release:"
+  echo "> install_core"
+  echo "A clean verbose installation to system location:"
+  echo "> install_core -cvs"
+  echo "A clean installation to specified location:"
+  echo "> install_core -c -r /tmp"
 }
 
 # cmd line options processing
 process_options () {
-  while getopts "cvur:" optname
+  while getopts "cvsr:" optname
     do
       case "$optname" in
         "c")
@@ -43,11 +62,11 @@ process_options () {
         "v")
           verbose=1
           ;;
-        "u")
-          core_release_dir="${default_core_release_dir}"
+        "s")
+          system=1
           ;;
         "r")
-          core_release_dir="${OPTARG}"
+          release_dir=$OPTARG
           ;;
         "?")
           print_usage
@@ -70,23 +89,37 @@ process_options () {
 process_options "$@"
 argstart=$?
 
-pushd "$NUPIC"
+pushd "$NUPIC_CORE"
 
+echo "Clearing out existing build directory.."
+rm -rf build
+mkdir -p build/scripts
+pushd build/scripts
+
+echo
+echo "Calling CMake..."
+if [ "${system}" -eq "1" ]; then
+  echo "Installing into system location"
+  VERBOSE="${verbose}" cmake ../../src
+elif [ -n "$release_dir" ]; then
+  echo "Installing into specified release directory \"${release_dir}\""
+  VERBOSE="${verbose}" cmake ../../src -DCMAKE_INSTALL_PREFIX=${release_dir}
+fi
+
+# optionally start a fresh build
 if [ "${clean_build}" -eq "1" ] ; then
-  echo Clearing out existing build and dist directories..
-  rm -rf build dist
+  echo
+  echo "Cleaning..."
+  VERBOSE="${verbose}" make clean
 fi
 
-# User had a chance to define the core_release_dir with either -r or -u options.
-# If not set, it means we don't use it at all and let NuPIC download the binary.
-if [ -n "$core_release_dir" ]; then
-  echo "Building NuPIC using nupic.core release at ${core_release_dir}..."
-  echo "VERBOSE=\"${verbose}\" python setup.py install --user --cmake_options=\"-DNUPIC_CORE=${core_release_dir}\""
-  VERBOSE="${verbose}" python setup.py install --user --cmake_options="-DNUPIC_CORE=${core_release_dir}"
-else
-  echo "Building NuPIC using nupic.core binary download..."
-  VERBOSE="${verbose}" python setup.py install --user
-fi
+echo
+echo "Making..."
+VERBOSE="${verbose}" make -j6
 
+echo
+echo "Installing..."
+VERBOSE="${verbose}" make install
 
+popd
 popd
