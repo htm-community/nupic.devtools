@@ -4,14 +4,26 @@ I keep scripts I use for NuPIC development here. More details at some point.
 
 ## Assumptions
 
-- You have `git` installed.
+### For installation scripts...
+
 - You have the `NUPIC` environment variable set to the path of your NuPIC checkout.
 - You have the `NUPIC_CORE` environment variable set to the path of your `nupic.core` checkout.
+
+### For release script...
+
+- You have `git` installed.
+- You have a [GitHub personal access token](https://github.com/blog/1509-personal-api-tokens) set as the `GH_ACCESS_TOKEN` environment variable.
 - You are a NuPIC committer (you have push access), required for releasing.
 
 ## Installation
 
+### For installation scripts:
+
 Add the `bin` folder to your `PATH`.
+
+### For release script:
+
+    pip install libsaas
 
 ## Usage
 
