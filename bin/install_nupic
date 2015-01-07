@@ -102,8 +102,7 @@ fi
 # If not set, it means we don't use it at all and let NuPIC download the binary.
 if [ -n "$core_release_dir" ]; then
   echo "Building NuPIC using nupic.core release at ${core_release_dir}..."
-  echo "VERBOSE=\"${verbose}\" python setup.py install --user --cmake_options=\"-DNUPIC_CORE=${core_release_dir}\""
-  VERBOSE="${verbose}" python setup.py install --user --cmake_options="-DNUPIC_CORE=${core_release_dir}"
+  VERBOSE="${verbose}" python setup.py install --user --nupic-core-dir=${core_release_dir}
 else
   echo "Building NuPIC using nupic.core binary download..."
   VERBOSE="${verbose}" python setup.py install --user
