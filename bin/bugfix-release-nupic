@@ -34,7 +34,7 @@ CHANGELOG_FILE = "CHANGELOG.md"
 DOXYFILE = "docs/Doxyfile"
 INIT_FILE = "nupic/__init__.py"
 
-DEV_SUFFIX = "-dev"
+DEV_SUFFIX = ".dev0"
 NUPIC = os.environ["NUPIC"]
 CWD = os.getcwd()
 
@@ -177,9 +177,9 @@ def create_release(remote, dry_run=False):
     die("Your local repo is not up to date with upstream/master, please sync!")
 
   with open(VERSION_FILE, "r") as f:
-    dev_version = f.read().replace('\n', '')
-
-  release_version = dev_version.split("-")[0]
+    dev_version = f.read().strip()
+  # Turns "X.Y.Z.dev0 into "X.Y.Z".
+  release_version = ".".join(dev_version.split(".")[:-1])
   release_split = [int(i) for i in release_version.split('.')]
   release_split[-1] -= 1
   previous_version = ".".join([str(i) for i in release_split])
