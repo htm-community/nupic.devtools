@@ -69,6 +69,8 @@ This is a work in progress.
 ## Usage
 
 > ./bugfix-release <path-to-repo> [options]
+
+The `path-to-repo` may be a relative or absolute path to the repository being released. If the path is omitted, it's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
         """
 )
 parser.add_option(

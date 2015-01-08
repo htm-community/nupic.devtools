@@ -7,6 +7,10 @@ There are two tools here. If you want them add the `bin` folder to your `PATH`:
 
 # NuPIC startup scripts
 
+These scripts are used to build NuPIC and NuPIC Core from source code cloned into local repositories. Once added to your `PATH`, they may be executed from anywhere in your filesystem. 
+
+> **NOTE**: The help strings below denote paths that will be different on each system, depending on the checkout locations of `NUPIC` and `NUPIC_CORE`. 
+
 ## Requirements
 
 - `export NUPIC=<nupic-repo>`
@@ -44,7 +48,7 @@ A clean installation to specified location (/tmp):
 
 ### Installing NuPIC
 
-Call the `install_nupic` script.
+`> install_nupic -h`
 
 ```
 Installs NuPIC from /Users/mtaylor/nta/nupic directory. If nupic.core release directory
@@ -80,6 +84,8 @@ Calls the previous two scripts with the `-c` options and ensures the `nupic.core
 
 # Release script
 
+> **WARNING**: This script is still a work in progress!
+
 Pushes a new git release using git tags and the GitHub API. Users must have push access to the target repository and a GitHub access token.
 
 ## Requirements:
@@ -93,6 +99,7 @@ Pushes a new git release using git tags and the GitHub API. Users must have push
 
 > ./bugfix-release <path-to-repo> [options]
 
+The `path-to-repo` may be a relative or absolute path to the repository being released. If the path is omitted, it's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location. 
 
 
 ## Options
