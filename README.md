@@ -1,35 +1,22 @@
 # NuPIC Developer Tools
 
-I keep scripts I use for NuPIC development here. More details at some point.
+There are two tools here. If you want them add the `bin` folder to your `PATH`:
 
-## Assumptions
+- [NuPIC startup scripts](#startup-scripts)
+- [release script](#release-script)
 
-### For installation scripts...
+# NuPIC startup scripts
 
-- You have the `NUPIC` environment variable set to the path of your NuPIC checkout.
-- You have the `NUPIC_CORE` environment variable set to the path of your `nupic.core` checkout.
+## Requirements
 
-### For release script...
-
-- You have `git` installed.
-- You have a [GitHub personal access token](https://github.com/blog/1509-personal-api-tokens) set as the `GH_ACCESS_TOKEN` environment variable.
-- You are a NuPIC committer (you have push access), required for releasing.
-
-## Installation
-
-### For installation scripts:
-
-Add the `bin` folder to your `PATH`.
-
-### For release script:
-
-    pip install libsaas
+- `export NUPIC=<nupic-repo>`
+- `export NUPIC_CORE=<nupic-core-repo>`
 
 ## Usage
 
 ### Installing NuPIC Core
 
-Call the `install_core` script.
+`> install_nupic_core -h`
 
 ```
 Installs nupic.core from /Users/mtaylor/nta/nupic.core directory. By default, this
@@ -84,6 +71,35 @@ A clean installation using nupic.core at specified location (/tmp):
     > install_nupic -cv -r /tmp
 ```
 
-### Install Both NuPIC and NuPIC Core
+### Install All
 
-Call the `install_nupic_all` script, which calls the previous two scripts with the `-c` options and ensures the `nupic.core` release binaries are used for the `nupic` build. 
+`> install_nupic_all` 
+
+Calls the previous two scripts with the `-c` options and ensures the `nupic.core` release binaries are used for the `nupic` build. 
+
+
+# Release script
+
+Pushes a new git release using git tags and the GitHub API. Users must have push access to the target repository and a GitHub access token.
+
+## Requirements:
+- git
+- [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
+  - `export GH_ACCESS_TOKEN=<token>`
+- Push access to target git repository
+- `pip install libsaas`
+
+## Usage
+
+> ./bugfix-release <path-to-repo> [options]
+
+
+
+## Options
+```
+  -h, --help            show this help message and exit
+  -v, --verbose         Print debugging statements.
+  -d, --dry_run         Prevents pushing to remote master branch.
+  -r REMOTE, --remote=REMOTE
+                        Which remote location to push to (default 'upstream').
+```
