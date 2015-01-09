@@ -92,8 +92,8 @@ Pushes a new NuPIC release using git tags and the GitHub API. Users must have pu
 
 ## Requirements:
 - git
-- [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
-  - `export GH_ACCESS_TOKEN=<token>`
+- ~~[GitHub access token](https://github.com/blog/1509-personal-api-tokens)~~
+  - ~~`export GH_ACCESS_TOKEN=<token>`~~
 - `export NUPIC=<path-to-nupic-checkout>`
 - Push access to target git repository
 - `pip install libsaas`
