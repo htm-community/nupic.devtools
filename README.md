@@ -97,7 +97,7 @@ Pushes a new git release using git tags and the GitHub API. Users must have push
 
 ## Usage
 
-> ./bugfix-release <path-to-repo> [options]
+> ./release <path-to-repo> [options]
 
 The `path-to-repo` may be a relative or absolute path to the repository being released. If the path is omitted, it's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location. 
 
@@ -107,6 +107,10 @@ The `path-to-repo` may be a relative or absolute path to the repository being re
   -h, --help            show this help message and exit
   -v, --verbose         Print debugging statements.
   -d, --dry_run         Prevents pushing to remote master branch.
+  -y, --yes             Prevents command line confirmation for the release.
   -r REMOTE, --remote=REMOTE
                         Which remote location to push to (default 'upstream').
+  -s RELEASE_TYPE, --semantic-release-type=RELEASE_TYPE
+                        Type of semantic release to execute. Must be either
+                        "bugfix", "minor", or "major" (default "bugfix").
 ```
