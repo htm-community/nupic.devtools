@@ -250,7 +250,7 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
   print "Updating version from %s to %s." % (dev_version, release_version)
   print "Previous release was %s" % previous_version
 
-  if not options.auto_confirm:
+  if confirm:
     proceed = query_yes_no(
       "\n** WARNING **: You're about to release %s (%s) for the git repo "
       "at %s. This is a big deal. "
@@ -270,7 +270,7 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
   gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
 
   # Remove the last log line, because it will just be a commit bumping the
-  # version to X.Y.Z-dev.
+  # version to X.Y.Z.dev0.
   del gitlog[-1]
 
   if len(gitlog) == 0:
