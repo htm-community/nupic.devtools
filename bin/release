@@ -38,12 +38,12 @@ INIT_FILE = "nupic/__init__.py"
 # You know you hate it when distutils complains.
 DEV_SUFFIX = ".dev0"
 
-
 NUPIC = os.environ["NUPIC"]
 
 CWD = os.getcwd()
 GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
 
+DEFAULT_RELEASE_TYPE = "bugfix"
 DEFAULT_REMOTE = "upstream"
 DEFAULT_REPO_DIR = NUPIC
 
@@ -80,7 +80,6 @@ parser.add_option(
   default=False,
   dest="verbose",
   help="Print debugging statements.")
-
 parser.add_option(
   "-d",
   "--dry_run",
@@ -88,13 +87,26 @@ parser.add_option(
   default=False,
   dest="dry_run",
   help="Prevents pushing to remote master branch.")
-
+parser.add_option(
+  "-y",
+  "--yes",
+  action="store_true",
+  default=False,
+  dest="auto_confirm",
+  help="Prevents command line confirmation for the release.")
 parser.add_option(
   "-r",
   "--remote",
   default=DEFAULT_REMOTE,
   dest="remote",
   help="Which remote location to push to (default 'upstream').")
+parser.add_option(
+  "-s",
+  "--semantic-release-type",
+  default=DEFAULT_RELEASE_TYPE,
+  dest="release_type",
+  help="Type of semantic release to execute. Must be either \"bugfix\", "
+       "\"minor\", or \"major\" (default \"bugfix\").")
 
 
 
@@ -114,6 +126,7 @@ def debug(msg):
 
 def die(msg):
   print msg
+  os.chdir(CWD)
   exit(-1)
 
 
@@ -200,20 +213,56 @@ def user_has_push_access(remote):
 
 
 
-def create_release(remote, dry_run=False):
+def find_versions(dev_version, release_type):
+  # Turns "X.Y.Z.dev0 into "X.Y.Z".
+  expected_next_version = ".".join(dev_version.split(".")[:-1])
+  release_split = [int(i) for i in expected_next_version.split('.')]
+
+  release_split[-1] -= 1
+  previous_version = ".".join([str(i) for i in release_split])
+
+  if release_type == "bugfix":
+    release_version = expected_next_version
+  elif release_type == "minor":
+    release_split[-2] += 1
+    release_split[-1] = 0
+    release_version = ".".join([str(i) for i in release_split])
+  else:
+    release_split[0] += 1
+    release_split[1] = 0
+    release_split[2] = 0
+    release_version = ".".join([str(i) for i in release_split])
+
+  return previous_version, release_version
+
+
+
+def create_release(remote, release_type, confirm=True, dry_run=False):
   if repo_needs_update(remote):
     die("Your local repo is not up to date with upstream/master, please sync!")
 
   with open(VERSION_FILE, "r") as f:
     dev_version = f.read().strip()
-  # Turns "X.Y.Z.dev0 into "X.Y.Z".
-  release_version = ".".join(dev_version.split(".")[:-1])
-  release_split = [int(i) for i in release_version.split('.')]
-  release_split[-1] -= 1
-  previous_version = ".".join([str(i) for i in release_split])
 
+  previous_version, release_version = find_versions(dev_version, release_type)
+
+  print "Executing %s release." % release_type
   print "Updating version from %s to %s." % (dev_version, release_version)
-  print "Last release was %s" % previous_version
+  print "Previous release was %s" % previous_version
+
+  if not options.auto_confirm:
+    proceed = query_yes_no(
+      "\n** WARNING **: You're about to release %s (%s) for the git repo "
+      "at %s. This is a big deal. "
+      "Are you sure you know what you're doing?"
+      % (release_version, release_type, repo)
+    )
+    if not proceed:
+      die(
+        "\nRight. Better safe than sorry. "
+        "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
+      )
+
 
   git_command = "git log %s..HEAD --oneline" % previous_version
   debug(git_command)
@@ -350,6 +399,11 @@ if __name__ == "__main__":
 
   verbose = options.verbose
   remote = options.remote
+  release_type = options.release_type
+  confirm = not options.auto_confirm
+
+  if release_type not in ["bugfix", "minor", "major"]:
+    die("Invalid semantic release type \"%s\"." % release_type)
 
   repo = DEFAULT_REPO_DIR
   if len(args) > 0:
@@ -358,22 +412,10 @@ if __name__ == "__main__":
   if not user_has_push_access(remote):
     die("You must have push access to remote \"%s\" to create a release." % remote)
 
-  proceed = query_yes_no(
-    "\n** WARNING **: You're about to create a new release for the git repo "
-    "at %s. This is a big deal. "
-    "Are you sure you know what you're doing?"
-    % repo
-  )
-  if not proceed:
-    die(
-      "\nRight. Better safe than sorry. "
-      "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
-    )
-
   os.chdir(repo)
 
-  release_number = create_release(options.remote, dry_run=options.dry_run)
-  create_development_version(options.remote, dry_run=options.dry_run)
+  release_number = create_release(remote, release_type, confirm=confirm, dry_run=options.dry_run)
+  create_development_version(remote, dry_run=options.dry_run)
 
   if options.dry_run:
     print "\n%s was committed and tagged locally but not pushed to %s." \
