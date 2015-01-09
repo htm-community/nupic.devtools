@@ -38,10 +38,10 @@ INIT_FILE = "nupic/__init__.py"
 # You know you hate it when distutils complains.
 DEV_SUFFIX = ".dev0"
 
-NUPIC = os.environ["NUPIC"]
+NUPIC = None
+GH_TOKEN = None
 
 CWD = os.getcwd()
-GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
 
 DEFAULT_RELEASE_TYPE = "bugfix"
 DEFAULT_REMOTE = "upstream"
@@ -396,6 +396,14 @@ def create_development_version(remote, dry_run=False):
 
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
+
+  if "NUPIC" not in os.environ:
+    die("Set the NUPIC environment variable.")
+  NUPIC = os.environ["NUPIC"]
+  if "GH_ACCESS_TOKEN" not in os.environ:
+    die("Set the GH_ACCESS_TOKEN environment variable.")
+  GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
+
 
   verbose = options.verbose
   remote = options.remote
