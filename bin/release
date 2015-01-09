@@ -165,6 +165,12 @@ def query_yes_no(question, default="yes"):
 
 
 
+def pause(message):
+  sys.stdout.write(message + " To resume this script, press enter.")
+  raw_input()
+
+
+
 def tag_exists(tag):
   git_command = "git tag"
   debug(git_command)
@@ -318,15 +324,15 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
     else:
       new_changelog_contents.append(line)
 
-  # If the user doing the release didn't choose any messages to put in the
-  # changelog, something is wrong. A release should always have chagnes in the
-  # changelog.
-  if changelog_count == 0:
-    bail_out("You must choose at least one commit message to add to the "
-             "CHANGELOG file.")
-
   with open(CHANGELOG_FILE, "wb") as f:
     f.writelines(new_changelog_contents)
+
+  manual_changelog_change = query_yes_no(
+    "\nDo you want to make any manual changes to the CHANGELOG file before "
+    "continuing?"
+  )
+  if manual_changelog_change:
+    pause("Edit the CHANGELOG.md file now and save without committing.")
 
   print "\nCommitting release..."
   git_command = "git commit -am \"Release %s.\" --no-verify" % release_version
