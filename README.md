@@ -86,7 +86,7 @@ Calls the previous two scripts with the `-c` options and ensures the `nupic.core
 
 > **WARNING**: This script is still a work in progress!
 
-Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+Pushes a new NuPIC release using git tags ~~and the GitHub API~~. Users must have push access ~~and a GitHub access token~~.
 
 **This is a work in progress.**
 
