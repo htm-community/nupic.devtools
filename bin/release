@@ -86,7 +86,7 @@ parser.add_option(
   action="store_true",
   default=False,
   dest="dry_run",
-  help="Prevents pushing to remote master branch.")
+  help="Prevents pushing to remote branch.")
 parser.add_option(
   "-y",
   "--yes",
