@@ -41,6 +41,8 @@ DEV_SUFFIX = ".dev0"
 NUPIC = None
 GH_TOKEN = None
 
+SLUG = "numenta/nupic"
+
 CWD = os.getcwd()
 
 DEFAULT_RELEASE_TYPE = "bugfix"
@@ -400,6 +402,15 @@ def create_development_version(remote, dry_run=False):
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
 
+  gh = github.GitHub(GH_TOKEN)
+  nupic_repo = gh.repo("numenta", "nupic")
+  print nupic_repo.list_methods()
+  # print gh.list_methods()
+  # gh_user = gh.user()
+  # print gh_user.orgs()
+
+  exit()
+
   if "NUPIC" not in os.environ:
     die("Set the NUPIC environment variable.")
   NUPIC = os.environ["NUPIC"]
@@ -407,7 +418,6 @@ if __name__ == "__main__":
     die("Set the GH_ACCESS_TOKEN environment variable.")
   GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
 
-  gh = github.GitHub(GH_TOKEN)
 
   verbose = options.verbose
   remote = options.remote
@@ -425,6 +435,9 @@ if __name__ == "__main__":
 
   if not user_has_push_access(remote):
     die("You must have push access to remote \"%s\" to create a release." % remote)
+
+
+
 
   os.chdir(repo)
 
