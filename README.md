@@ -86,28 +86,33 @@ Calls the previous two scripts with the `-c` options and ensures the `nupic.core
 
 > **WARNING**: This script is still a work in progress!
 
-Pushes a new git release using git tags and the GitHub API. Users must have push access to the target repository and a GitHub access token.
+Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+
+**This is a work in progress.**
 
 ## Requirements:
 - git
 - [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
   - `export GH_ACCESS_TOKEN=<token>`
+- `export NUPIC=<path-to-nupic-checkout>`
 - Push access to target git repository
 - `pip install libsaas`
 
 ## Usage
 
-> ./release <path-to-repo> [options]
+> ./release [options]
 
-The `path-to-repo` may be a relative or absolute path to the repository being released. If the path is omitted, it's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location. 
+It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
 
 
-## Options
+## Options:
+
 ```
   -h, --help            show this help message and exit
   -v, --verbose         Print debugging statements.
   -d, --dry_run         Prevents pushing to remote master branch.
   -y, --yes             Prevents command line confirmation for the release.
+                        Hopefully you know what you're doing.
   -r REMOTE, --remote=REMOTE
                         Which remote location to push to (default 'upstream').
   -s RELEASE_TYPE, --semantic-release-type=RELEASE_TYPE
