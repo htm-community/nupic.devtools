@@ -26,6 +26,7 @@ import subprocess
 from optparse import OptionParser
 
 from libsaas.services import github
+from libsaas.http import HTTPError
 
 # Files that will be modified.
 VERSION_FILE = "VERSION"
@@ -45,7 +46,11 @@ SLUG = "numenta/nupic"
 
 CWD = os.getcwd()
 
-DEFAULT_RELEASE_TYPE = "bugfix"
+BUGFIX_RELEASE = "bugfix"
+MINOR_RELEASE = "minor"
+MAJOR_RELEASE = "major"
+
+DEFAULT_RELEASE_TYPE = BUGFIX_RELEASE
 DEFAULT_REMOTE = "upstream"
 
 verbose = False
@@ -56,7 +61,7 @@ gh = None
 parser = OptionParser(
   usage="%prog [options]\n\n"
         """
-Pushes a new NuPIC release using git tags ~~and the GitHub API~~. Users must have push access ~~and a GitHub access token~~.
+Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
 
 **This is a work in progress.**
 
@@ -108,8 +113,9 @@ parser.add_option(
   "--semantic-release-type",
   default=DEFAULT_RELEASE_TYPE,
   dest="release_type",
-  help="Type of semantic release to execute. Must be either \"bugfix\", "
-       "\"minor\", or \"major\" (default \"bugfix\").")
+  help="Type of semantic release to execute. Must be either \"%s\", "
+       "\"%s\", or \"%s\" (default \"%s\")."
+       % (BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE, BUGFIX_RELEASE))
 
 
 
@@ -229,9 +235,9 @@ def find_versions(dev_version, release_type):
   release_split[-1] -= 1
   previous_version = ".".join([str(i) for i in release_split])
 
-  if release_type == "bugfix":
+  if release_type == BUGFIX_RELEASE:
     release_version = expected_next_version
-  elif release_type == "minor":
+  elif release_type == MINOR_RELEASE:
     # Bump minor number.
     release_split[-2] += 1
     # Rollover bugfix number.
@@ -246,6 +252,22 @@ def find_versions(dev_version, release_type):
     release_version = ".".join([str(i) for i in release_split])
 
   return previous_version, release_version
+
+
+
+def get_release_notes(release_number):
+  release_notes = []
+  in_release = False
+  with open(CHANGELOG_FILE, "r") as f:
+    for line in f.readlines():
+      if in_release:
+        if line.startswith("##"):
+          break
+        release_notes.append(line)
+      if line == "## %s\n" % release_number:
+        in_release = True
+  return "".join(release_notes)
+
 
 
 
@@ -405,17 +427,22 @@ def create_development_version(remote, dry_run=False):
 
 
 
+def create_github_release(tag, changes):
+  print "\nCreating Release %s in GitHub..." % tag
+  gh = github.GitHub(GH_TOKEN)
+  gh_repo = gh.repo("numenta", "nupic")
+  release = gh_repo.releases().create({
+    "name": tag,
+    "tag_name": tag,
+    "body": changes
+  })
+  return release["html_url"]
+
+
+
+
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
-
-  gh = github.GitHub(GH_TOKEN)
-  nupic_repo = gh.repo("numenta", "nupic")
-  print nupic_repo.list_methods()
-  # print gh.list_methods()
-  # gh_user = gh.user()
-  # print gh_user.orgs()
-
-  exit()
 
   if "NUPIC" not in os.environ:
     die("Set the NUPIC environment variable.")
@@ -424,13 +451,12 @@ if __name__ == "__main__":
     die("Set the GH_ACCESS_TOKEN environment variable.")
   GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
 
-
   verbose = options.verbose
   remote = options.remote
   release_type = options.release_type
   confirm = not options.auto_confirm
 
-  if release_type not in ["bugfix", "minor", "major"]:
+  if release_type not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
     die("Invalid semantic release type \"%s\"." % release_type)
 
   # Unpublished feature: first argument can be a path to a repository location.
@@ -441,9 +467,6 @@ if __name__ == "__main__":
 
   if not user_has_push_access(remote):
     die("You must have push access to remote \"%s\" to create a release." % remote)
-
-
-
 
   os.chdir(repo)
 
@@ -459,9 +482,16 @@ if __name__ == "__main__":
       print "\tgit reset --hard upstream/master"
       print "\tgit tag -d %s" % release_number
     else:
+      try:
+        release_url = create_github_release(
+          release_number, get_release_notes(release_number)
+        )
+        print "See %s" % release_url
+      except HTTPError:
+        print("Error publishing release information to GitHub! But don't "
+              "worry, you can do that manually at github.com.")
       print "\nDone releasing %s." % release_number
-      print "See https://github.com/numenta/nupic/releases/tag/%s" \
-            % release_number
+
   finally:
     # Always change back to original directory, even if fatal errors occur.
     os.chdir(CWD)
