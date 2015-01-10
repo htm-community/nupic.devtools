@@ -86,17 +86,16 @@ Calls the previous two scripts with the `-c` options and ensures the `nupic.core
 
 > **WARNING**: This script is still a work in progress!
 
-Pushes a new NuPIC release using git tags ~~and the GitHub API~~. Users must have push access ~~and a GitHub access token~~.
+Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
 
 **This is a work in progress.**
 
 ## Requirements:
 - git
-- ~~[GitHub access token](https://github.com/blog/1509-personal-api-tokens)~~
-  - ~~`export GH_ACCESS_TOKEN=<token>`~~
-- `export NUPIC=<path-to-nupic-checkout>`
 - Push access to target git repository
-- `pip install libsaas`
+- `export GH_ACCESS_TOKEN=<token>` ([GitHub access token](https://github.com/blog/1509-personal-api-tokens))
+- `export NUPIC=<path-to-nupic-checkout>`
+- `pip install libsaas` (For GitHub API calls to publish release)
 
 ## Usage
 
@@ -104,9 +103,7 @@ Pushes a new NuPIC release using git tags ~~and the GitHub API~~. Users must hav
 
 It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
 
-
-## Options:
-
+##Options
 ```
   -h, --help            show this help message and exit
   -v, --verbose         Print debugging statements.
