@@ -139,7 +139,7 @@ def die(msg):
 
 
 
-def query_yes_no(question, default="yes"):
+def query_yes_no(question, default="no"):
     """Ask a yes/no question via raw_input() and return their answer.
 
     "question" is a string that is presented to the user.
@@ -487,7 +487,8 @@ if __name__ == "__main__":
           release_number, get_release_notes(release_number)
         )
         print "See %s" % release_url
-      except HTTPError:
+      except HTTPError as http_error:
+        print http_error
         print("Error publishing release information to GitHub! But don't "
               "worry, you can do that manually at github.com.")
       print "\nDone releasing %s." % release_number
