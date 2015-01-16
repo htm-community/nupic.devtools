@@ -2,10 +2,10 @@
 
 There are two tools here. If you want them add the `bin` folder to your `PATH`:
 
-- [NuPIC startup scripts](#startup-scripts)
+- [NuPIC build scripts](#nupic-build-scripts)
 - [release script](#release-script)
 
-# NuPIC startup scripts
+# NuPIC build scripts
 
 These scripts are used to build NuPIC and NuPIC Core from source code cloned into local repositories. Once added to your `PATH`, they may be executed from anywhere in your filesystem. 
 
