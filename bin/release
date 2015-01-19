@@ -25,24 +25,61 @@ import os
 import subprocess
 from optparse import OptionParser
 
-parser = OptionParser(
-  usage="%prog [options]\n\nPushes a new NuPIC release."
-)
+from libsaas.services import github
+from libsaas.http import HTTPError
 
+# Files that will be modified.
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
 DOXYFILE = "docs/Doxyfile"
 INIT_FILE = "nupic/__init__.py"
 
-DEV_SUFFIX = "-dev"
-NUPIC = os.environ["NUPIC"]
+# Used for creating the next version after the release. After 1.2.3 comes
+# 1.2.3.dev0. Named this way because distutils complains if you use "-dev".
+# You know you hate it when distutils complains.
+DEV_SUFFIX = ".dev0"
+
+NUPIC = None
+GH_TOKEN = None
+
+SLUG = "numenta/nupic"
+
 CWD = os.getcwd()
 
+BUGFIX_RELEASE = "bugfix"
+MINOR_RELEASE = "minor"
+MAJOR_RELEASE = "major"
+
+DEFAULT_RELEASE_TYPE = BUGFIX_RELEASE
 DEFAULT_REMOTE = "upstream"
 
 verbose = False
+gh = None
 
 
+# Options parsing.
+parser = OptionParser(
+  usage="%prog [options]\n\n"
+        """
+Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+
+**This is a work in progress.**
+
+## Requirements:
+- git
+- [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
+  - `export GH_ACCESS_TOKEN=<token>`
+- `export NUPIC=<path-to-nupic-checkout>`
+- Push access to target git repository
+- `pip install libsaas`
+
+## Usage
+
+> ./release [options]
+
+It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
+        """
+)
 parser.add_option(
   "-v",
   "--verbose",
@@ -50,21 +87,35 @@ parser.add_option(
   default=False,
   dest="verbose",
   help="Print debugging statements.")
-
 parser.add_option(
   "-d",
   "--dry_run",
   action="store_true",
   default=False,
   dest="dry_run",
-  help="Prevents pushing to remote master branch.")
-
+  help="Prevents pushing to remote branch.")
+parser.add_option(
+  "-y",
+  "--yes",
+  action="store_true",
+  default=False,
+  dest="auto_confirm",
+  help="Prevents command line confirmation for the release. "
+       "Hopefully you know what you're doing.")
 parser.add_option(
   "-r",
   "--remote",
   default=DEFAULT_REMOTE,
   dest="remote",
   help="Which remote location to push to (default 'upstream').")
+parser.add_option(
+  "-s",
+  "--semantic-release-type",
+  default=DEFAULT_RELEASE_TYPE,
+  dest="release_type",
+  help="Type of semantic release to execute. Must be either \"%s\", "
+       "\"%s\", or \"%s\" (default \"%s\")."
+       % (BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE, BUGFIX_RELEASE))
 
 
 
@@ -88,7 +139,7 @@ def die(msg):
 
 
 
-def query_yes_no(question, default="yes"):
+def query_yes_no(question, default="no"):
     """Ask a yes/no question via raw_input() and return their answer.
 
     "question" is a string that is presented to the user.
@@ -119,6 +170,12 @@ def query_yes_no(question, default="yes"):
         else:
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
+
+
+
+def pause(message):
+  sys.stdout.write(message + " To resume this script, press enter.")
+  raw_input()
 
 
 
@@ -159,22 +216,86 @@ def repo_needs_update(remote):
 
 
 
-def create_release(remote, dry_run=False):
-  os.chdir(NUPIC)
+def user_has_push_access(remote):
+  debug("Checking if user has push access to %s..." % remote)
 
+  git_command = "git push --dry-run %s master" % remote
+  debug(git_command)
+  status = subprocess.call(git_command, shell=True)
+  # User only has push access if exit status of the push call was 0.
+  return status == 0
+
+
+
+def find_versions(dev_version, release_type):
+  # Turns "X.Y.Z.dev0 into "X.Y.Z".
+  expected_next_version = ".".join(dev_version.split(".")[:-1])
+  release_split = [int(i) for i in expected_next_version.split('.')]
+
+  release_split[-1] -= 1
+  previous_version = ".".join([str(i) for i in release_split])
+
+  if release_type == BUGFIX_RELEASE:
+    release_version = expected_next_version
+  elif release_type == MINOR_RELEASE:
+    # Bump minor number.
+    release_split[-2] += 1
+    # Rollover bugfix number.
+    release_split[-1] = 0
+    release_version = ".".join([str(i) for i in release_split])
+  else:
+    # Bump major number.
+    release_split[0] += 1
+    # Rollover minor and bugfix numbers.
+    release_split[1] = 0
+    release_split[2] = 0
+    release_version = ".".join([str(i) for i in release_split])
+
+  return previous_version, release_version
+
+
+
+def get_release_notes(release_number):
+  release_notes = []
+  in_release = False
+  with open(CHANGELOG_FILE, "r") as f:
+    for line in f.readlines():
+      if in_release:
+        if line.startswith("##"):
+          break
+        release_notes.append(line)
+      if line == "## %s\n" % release_number:
+        in_release = True
+  return "".join(release_notes)
+
+
+
+
+def create_release(remote, release_type, confirm=True, dry_run=False):
   if repo_needs_update(remote):
     die("Your local repo is not up to date with upstream/master, please sync!")
 
   with open(VERSION_FILE, "r") as f:
-    dev_version = f.read().replace('\n', '')
+    dev_version = f.read().strip()
 
-  release_version = dev_version.split("-")[0]
-  release_split = [int(i) for i in release_version.split('.')]
-  release_split[-1] -= 1
-  previous_version = ".".join([str(i) for i in release_split])
+  previous_version, release_version = find_versions(dev_version, release_type)
 
+  print "Executing %s release." % release_type
   print "Updating version from %s to %s." % (dev_version, release_version)
-  print "Last release was %s" % previous_version
+  print "Previous release was %s" % previous_version
+
+  if confirm:
+    proceed = query_yes_no(
+      "\n** WARNING **: You're about to release NuPIC %s (%s). "
+      "This is a big deal. Are you sure you know what you're doing?"
+      % (release_version, release_type)
+    )
+    if not proceed:
+      die(
+        "\nRight. Better safe than sorry. "
+        "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
+      )
+
 
   git_command = "git log %s..HEAD --oneline" % previous_version
   debug(git_command)
@@ -182,7 +303,7 @@ def create_release(remote, dry_run=False):
   gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
 
   # Remove the last log line, because it will just be a commit bumping the
-  # version to X.Y.Z-dev.
+  # version to X.Y.Z.dev0.
   del gitlog[-1]
 
   if len(gitlog) == 0:
@@ -227,15 +348,15 @@ def create_release(remote, dry_run=False):
     else:
       new_changelog_contents.append(line)
 
-  # If the user doing the release didn't choose any messages to put in the
-  # changelog, something is wrong. A release should always have chagnes in the
-  # changelog.
-  if changelog_count == 0:
-    bail_out("You must choose at least one commit message to add to the "
-             "CHANGELOG file.")
-
   with open(CHANGELOG_FILE, "wb") as f:
     f.writelines(new_changelog_contents)
+
+  manual_changelog_change = query_yes_no(
+    "\nDo you want to make any manual changes to the CHANGELOG file before "
+    "continuing?"
+  )
+  if manual_changelog_change:
+    pause("Edit the CHANGELOG.md file now and save without committing.")
 
   print "\nCommitting release..."
   git_command = "git commit -am \"Release %s.\" --no-verify" % release_version
@@ -306,24 +427,72 @@ def create_development_version(remote, dry_run=False):
 
 
 
+def create_github_release(tag, changes):
+  print "\nCreating Release %s in GitHub..." % tag
+  gh = github.GitHub(GH_TOKEN)
+  gh_repo = gh.repo("numenta", "nupic")
+  release = gh_repo.releases().create({
+    "name": tag,
+    "tag_name": tag,
+    "body": changes
+  })
+  return release["html_url"]
+
+
+
+
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
 
+  if "NUPIC" not in os.environ:
+    die("Set the NUPIC environment variable.")
+  NUPIC = os.environ["NUPIC"]
+  if "GH_ACCESS_TOKEN" not in os.environ:
+    die("Set the GH_ACCESS_TOKEN environment variable.")
+  GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
+
   verbose = options.verbose
+  remote = options.remote
+  release_type = options.release_type
+  confirm = not options.auto_confirm
 
-  release_number = create_release(options.remote, dry_run=options.dry_run)
-  create_development_version(options.remote, dry_run=options.dry_run)
+  if release_type not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
+    die("Invalid semantic release type \"%s\"." % release_type)
 
-  if options.dry_run:
-    print "\n%s was committed and tagged locally but not pushed to %s." \
-          % (release_number, options.remote)
-    print "To reset your local repository to the state it was in before this " \
-          "process:"
-    print "\tgit reset --hard upstream/master"
-    print "\tgit tag -d %s" % release_number
-  else:
-    print "\nDone releasing %s." % release_number
-    print "See https://github.com/numenta/nupic/releases/tag/%s" \
-          % release_number
+  # Unpublished feature: first argument can be a path to a repository location.
+  # Currently used for testing this script.
+  repo = NUPIC
+  if len(args) > 0:
+    repo = os.path.abspath(args[0])
 
-  os.chdir(CWD)
+  if not user_has_push_access(remote):
+    die("You must have push access to remote \"%s\" to create a release." % remote)
+
+  os.chdir(repo)
+
+  try:
+    release_number = create_release(remote, release_type, confirm=confirm, dry_run=options.dry_run)
+    create_development_version(remote, dry_run=options.dry_run)
+
+    if options.dry_run:
+      print "\n%s was committed and tagged locally but not pushed to %s." \
+            % (release_number, options.remote)
+      print "To reset your local repository to the state it was in before this " \
+            "process:"
+      print "\tgit reset --hard upstream/master"
+      print "\tgit tag -d %s" % release_number
+    else:
+      try:
+        release_url = create_github_release(
+          release_number, get_release_notes(release_number)
+        )
+        print "See %s" % release_url
+      except HTTPError as http_error:
+        print http_error
+        print("Error publishing release information to GitHub! But don't "
+              "worry, you can do that manually at github.com.")
+      print "\nDone releasing %s." % release_number
+
+  finally:
+    # Always change back to original directory, even if fatal errors occur.
+    os.chdir(CWD)

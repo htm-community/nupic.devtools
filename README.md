@@ -1,23 +1,26 @@
 # NuPIC Developer Tools
 
-I keep scripts I use for NuPIC development here. More details at some point.
+There are two tools here. If you want them add the `bin` folder to your `PATH`:
 
-## Assumptions
+- [NuPIC startup scripts](#startup-scripts)
+- [release script](#release-script)
 
-- You have `git` installed.
-- You have the `NUPIC` environment variable set to the path of your NuPIC checkout.
-- You have the `NUPIC_CORE` environment variable set to the path of your `nupic.core` checkout.
-- You are a NuPIC committer (you have push access), required for releasing.
+# NuPIC startup scripts
 
-## Installation
+These scripts are used to build NuPIC and NuPIC Core from source code cloned into local repositories. Once added to your `PATH`, they may be executed from anywhere in your filesystem. 
 
-Add the `bin` folder to your `PATH`.
+> **NOTE**: The help strings below denote paths that will be different on each system, depending on the checkout locations of `NUPIC` and `NUPIC_CORE`. 
+
+## Requirements
+
+- `export NUPIC=<nupic-repo>`
+- `export NUPIC_CORE=<nupic-core-repo>`
 
 ## Usage
 
 ### Installing NuPIC Core
 
-Call the `install_core` script.
+`> install_nupic_core -h`
 
 ```
 Installs nupic.core from /Users/mtaylor/nta/nupic.core directory. By default, this
@@ -45,7 +48,7 @@ A clean installation to specified location (/tmp):
 
 ### Installing NuPIC
 
-Call the `install_nupic` script.
+`> install_nupic -h`
 
 ```
 Installs NuPIC from /Users/mtaylor/nta/nupic directory. If nupic.core release directory
@@ -72,6 +75,44 @@ A clean installation using nupic.core at specified location (/tmp):
     > install_nupic -cv -r /tmp
 ```
 
-### Install Both NuPIC and NuPIC Core
+### Install All
 
-Call the `install_nupic_all` script, which calls the previous two scripts with the `-c` options and ensures the `nupic.core` release binaries are used for the `nupic` build. 
+`> install_nupic_all` 
+
+Calls the previous two scripts with the `-c` options and ensures the `nupic.core` release binaries are used for the `nupic` build. 
+
+
+# Release script
+
+> **WARNING**: This script is still a work in progress!
+
+Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+
+**This is a work in progress.**
+
+## Requirements:
+- git
+- Push access to target git repository
+- `export GH_ACCESS_TOKEN=<token>` ([GitHub access token](https://github.com/blog/1509-personal-api-tokens))
+- `export NUPIC=<path-to-nupic-checkout>`
+- `pip install libsaas` (For GitHub API calls to publish release)
+
+## Usage
+
+> ./release [options]
+
+It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
+
+##Options
+```
+  -h, --help            show this help message and exit
+  -v, --verbose         Print debugging statements.
+  -d, --dry_run         Prevents pushing to remote branch.
+  -y, --yes             Prevents command line confirmation for the release.
+                        Hopefully you know what you're doing.
+  -r REMOTE, --remote=REMOTE
+                        Which remote location to push to (default 'upstream').
+  -s RELEASE_TYPE, --semantic-release-type=RELEASE_TYPE
+                        Type of semantic release to execute. Must be either
+                        "bugfix", "minor", or "major" (default "bugfix").
+```
