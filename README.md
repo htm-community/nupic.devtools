@@ -2,10 +2,10 @@
 
 There are two tools here. If you want them add the `bin` folder to your `PATH`:
 
-- [NuPIC startup scripts](#startup-scripts)
+- [NuPIC build scripts](#nupic-build-scripts)
 - [release script](#release-script)
 
-# NuPIC startup scripts
+# NuPIC build scripts
 
 These scripts are used to build NuPIC and NuPIC Core from source code cloned into local repositories. Once added to your `PATH`, they may be executed from anywhere in your filesystem. 
 
@@ -84,11 +84,7 @@ Calls the previous two scripts with the `-c` options and ensures the `nupic.core
 
 # Release script
 
-> **WARNING**: This script is still a work in progress!
-
 Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
-
-**This is a work in progress.**
 
 ## Requirements:
 - git
