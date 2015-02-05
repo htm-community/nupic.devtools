@@ -25,6 +25,7 @@
 
 clean_build=0
 verbose=''
+user_flag=''
 core_release_dir=''
 default_core_release_dir="${NUPIC_CORE}/build/release"
 
@@ -39,7 +40,8 @@ print_usage () {
   echo "Options:"
   echo " -c Clean build, removes old build artifacts."
   echo " -v Verbose console output."
-  echo " -u Builds using nupic.core release at ${default_core_release_dir}"
+  echo " -u Runs python setup.py install with the --user option."
+  echo " -n Builds using nupic.core release at ${default_core_release_dir}"
   echo " -r <release-dir> Builds using nupic.core release at specified "
   echo "    directory instead of ${default_core_release_dir}."
   echo
@@ -48,14 +50,14 @@ print_usage () {
   echo "    > install_nupic"
   echo "A clean verbose installation using nupic.core at "
   echo "${default_core_release_dir}:"
-  echo "    > install_nupic -cvu"
+  echo "    > install_nupic -cvn"
   echo "A clean installation using nupic.core at specified location (/tmp):"
   echo "    > install_nupic -cv -r /tmp"
 }
 
 # cmd line options processing
 process_options () {
-  while getopts "cvur:" optname
+  while getopts "cvnur:" optname
     do
       case "$optname" in
         "c")
@@ -65,6 +67,9 @@ process_options () {
           verbose=1
           ;;
         "u")
+          user_flag="--user"
+          ;;
+        "n")
           core_release_dir="${default_core_release_dir}"
           ;;
         "r")
@@ -102,10 +107,10 @@ fi
 # If not set, it means we don't use it at all and let NuPIC download the binary.
 if [ -n "$core_release_dir" ]; then
   echo "Building NuPIC using nupic.core release at ${core_release_dir}..."
-  VERBOSE="${verbose}" python setup.py install --user --nupic-core-dir=${core_release_dir}
+  VERBOSE="${verbose}" python setup.py install ${user_flag} --nupic-core-dir=${core_release_dir}
 else
   echo "Building NuPIC using nupic.core binary download..."
-  VERBOSE="${verbose}" python setup.py install --user
+  VERBOSE="${verbose}" python setup.py install ${user_flag}
 fi
 
 

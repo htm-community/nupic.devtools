@@ -61,7 +61,8 @@ Usage:
 Options:
  -c Clean build, removes old build artifacts.
  -v Verbose console output.
- -u Builds using nupic.core release at /Users/mtaylor/nta/nupic.core/build/release
+ -u Runs python setup.py install with the --user option.
+ -n Builds using nupic.core release at /Users/mtaylor/nta/nupic.core/build/release
  -r <release-dir> Builds using nupic.core release at specified
     directory instead of /Users/mtaylor/nta/nupic.core/build/release.
 
@@ -70,7 +71,7 @@ An installation using downloaded nupic.core binary release:
     > install_nupic
 A clean verbose installation using nupic.core at
 /Users/mtaylor/nta/nupic.core/build/release:
-    > install_nupic -cvu
+    > install_nupic -cvn
 A clean installation using nupic.core at specified location (/tmp):
     > install_nupic -cv -r /tmp
 ```
