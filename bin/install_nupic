@@ -49,7 +49,7 @@ print_usage () {
   echo "An installation using downloaded nupic.core binary release:"
   echo "    > install_nupic"
   echo "A clean verbose installation using nupic.core at "
-  echo "${default_core_release_dir}:"
+  echo "${default_core_release_dir}:" 
   echo "    > install_nupic -cvn"
   echo "A clean installation using nupic.core at specified location (/tmp):"
   echo "    > install_nupic -cv -r /tmp"

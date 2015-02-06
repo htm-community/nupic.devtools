@@ -20,5 +20,56 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-install_nupic_core -c || exit
-install_nupic -cu
+clean_option=''
+verbose_option=''
+user_option=''
+
+print_usage () {
+  echo "Installs NuPIC and nupic.core from their respective source directories."
+  echo
+  echo "Usage:"
+  echo "> install_nupic_all [options]"
+  echo
+  echo "Options:"
+  echo " -c Clean build, removes old build artifacts."
+  echo " -v Verbose console output."
+  echo " -u Runs python setup.py install with the --user option."
+}
+
+# cmd line options processing
+process_options () {
+  while getopts "cvnur:" optname
+    do
+      case "$optname" in
+        "c")
+          clean_option='-c'
+          ;;
+        "v")
+          verbose_option='-v'
+          ;;
+        "u")
+          user_option="-u"
+          ;;
+        "?")
+          print_usage
+          exit
+          ;;
+        ":")
+          print_usage
+          exit
+          ;;
+        *)
+          # Should not occur
+          print_usage
+          exit
+          ;;
+      esac
+    done
+  return $OPTIND
+}
+
+process_options "$@"
+argstart=$?
+
+install_nupic_core ${clean_option} ${verbose_option} || exit
+install_nupic -n ${clean_option} ${verbose_option} ${user_option}
