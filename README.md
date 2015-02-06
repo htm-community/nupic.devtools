@@ -78,10 +78,21 @@ A clean installation using nupic.core at specified location (/tmp):
 
 ### Install All
 
-`> install_nupic_all` 
+`> install_nupic_all -h` 
 
-Calls the previous two scripts with the `-c` options and ensures the `nupic.core` release binaries are used for the `nupic` build. 
+```
+Installs NuPIC and nupic.core from their respective source directories.
 
+Usage:
+> install_nupic_all [options]
+
+Options:
+ -c Clean build, removes old build artifacts.
+ -v Verbose console output.
+ -u Runs python setup.py install with the --user option.
+```
+
+Calls the previous two scripts, ensuring the `nupic.core` release binaries are used for the `nupic` build. 
 
 # Release script
 
