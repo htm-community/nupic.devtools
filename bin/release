@@ -29,6 +29,7 @@ from libsaas.services import github
 from libsaas.http import HTTPError
 
 # Files that will be modified.
+README_FILE = "README.md"
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
 DOXYFILE = "docs/Doxyfile"
@@ -62,8 +63,6 @@ parser = OptionParser(
   usage="%prog [options]\n\n"
         """
 Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
-
-**This is a work in progress.**
 
 ## Requirements:
 - git
@@ -316,15 +315,17 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
 
   print "\nUpdating files..."
 
-  debug("\tUpdating VERSION...")
-  replace_in_file(dev_version, release_version, VERSION_FILE)
+  # In the README, we want to replace the last release version with the next 
+  # release version.
+  debug("\tUpdating README.md...")
+  replace_in_file(previous_version, release_version, README_FILE)
 
-  debug("\tUpdating Doxyfile...")
-  replace_in_file(dev_version, release_version, DOXYFILE)
+  # These files can be updated with a simple find/replace:
+  for target_file in [VERSION_FILE, DOXYFILE, INIT_FILE]:
+    debug("\tUpdating %s..." % target_file)
+    replace_in_file(dev_version, release_version, target_file)
 
-  debug("\tUpdating nupic/__init__.py...")
-  replace_in_file(dev_version, release_version, INIT_FILE)
-
+  # Changelog needs a little more care.
   debug("\tUpdating CHANGELOG.md...")
   # This is a bit more complex than a substitution.
   with open(CHANGELOG_FILE, "r") as f:
