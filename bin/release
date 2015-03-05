@@ -108,6 +108,13 @@ parser.add_option(
   dest="remote",
   help="Which remote location to push to (default 'upstream').")
 parser.add_option(
+  "-n",
+  "--next-release",
+  default=None,
+  dest="next_release",
+  help="What the next release version will be (if not supplied, "
+       "rollover to bugfix release.")
+parser.add_option(
   "-s",
   "--semantic-release-type",
   default=DEFAULT_RELEASE_TYPE,
@@ -270,32 +277,14 @@ def get_release_notes(release_number):
 
 
 
-def create_release(remote, release_type, confirm=True, dry_run=False):
-  if repo_needs_update(remote):
-    die("Your local repo is not up to date with upstream/master, please sync!")
-
-  with open(VERSION_FILE, "r") as f:
-    dev_version = f.read().strip()
-
-  previous_version, release_version = find_versions(dev_version, release_type)
-
-  print "Executing %s release." % release_type
-  print "Updating version from %s to %s." % (dev_version, release_version)
-  print "Previous release was %s" % previous_version
-
-  if confirm:
-    proceed = query_yes_no(
-      "\n** WARNING **: You're about to release NuPIC %s (%s). "
-      "This is a big deal. Are you sure you know what you're doing?"
-      % (release_version, release_type)
-    )
-    if not proceed:
-      die(
-        "\nRight. Better safe than sorry. "
-        "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
-      )
-
-
+def create_release(remote,
+                   release_type,
+                   dev_version,
+                   previous_version,
+                   release_version,
+                   confirm=True,
+                   dry_run=False):
+  
   git_command = "git log %s..HEAD --oneline" % previous_version
   debug(git_command)
   # These are all the commit messages since the last release.
@@ -340,12 +329,16 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
       changelog_count = 0
       # Loop through all the git log messages since the last version.
       for log_line in gitlog:
-        # Ask the user doing the release if they want each commit message in the
-        # changelog.
-        include = "Include this change in the CHANGELOG?\n\t\"%s\"" % log_line
-        if query_yes_no(include):
-          changelog_count += 1
-          new_changelog_contents.append("* %s\n" % log_line)
+        # There are some commit messages we can always ignore.
+        if not log_line.startswith("Merge pull request") \
+        and not log_line.startswith("Merge branch") \
+        and not log_line.startswith("Updates nupic.core to"):
+          # Ask the user doing the release if they want each commit message in the
+          # changelog.
+          include = "Include this change in the CHANGELOG?\n\t\"%s\"" % log_line
+          if query_yes_no(include):
+            changelog_count += 1
+            new_changelog_contents.append("* %s\n" % log_line)
     else:
       new_changelog_contents.append(line)
 
@@ -394,14 +387,18 @@ def create_release(remote, release_type, confirm=True, dry_run=False):
   return release_version
 
 
-def create_development_version(remote, dry_run=False):
+def get_next_release_version():
   with open(VERSION_FILE, "r") as f:
     last_version = f.read().replace('\n', '')
-
+  if last_version[-5:] == DEV_SUFFIX:
+    last_version = last_version[0:(0-len(DEV_SUFFIX))]
   dev_split = [int(i) for i in last_version.split('.')]
   dev_split[-1] += 1
   next_version = ".".join([str(i) for i in dev_split])
-  dev_version = "%s%s" % (next_version, DEV_SUFFIX)
+  return "%s%s" % (next_version, DEV_SUFFIX)
+
+
+def create_development_version(remote, last_version, dev_version, dry_run=False):
 
   print "\nUpdating version from %s to %s." % (last_version, dev_version)
 
@@ -439,9 +436,6 @@ def create_github_release(tag, changes):
   })
   return release["html_url"]
 
-
-
-
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
 
@@ -456,6 +450,12 @@ if __name__ == "__main__":
   remote = options.remote
   release_type = options.release_type
   confirm = not options.auto_confirm
+  next_release = options.next_release
+
+  if next_release is None:
+    next_release = get_next_release_version()
+  elif next_release[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
+    next_release += DEV_SUFFIX
 
   if release_type not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
     die("Invalid semantic release type \"%s\"." % release_type)
@@ -472,8 +472,44 @@ if __name__ == "__main__":
   os.chdir(repo)
 
   try:
-    release_number = create_release(remote, release_type, confirm=confirm, dry_run=options.dry_run)
-    create_development_version(remote, dry_run=options.dry_run)
+
+    with open(VERSION_FILE, "r") as f:
+      dev_version = f.read().strip()
+
+    previous_version, release_version = find_versions(dev_version, release_type)
+
+    print "\nExecuting %s release." % release_type
+    print "Updating version from %s to %s" % (dev_version, release_version)
+    print "Previous release was %s" % previous_version
+    print "Next development version will be %s" % next_release
+
+    if confirm:
+      proceed = query_yes_no(
+        "\n** WARNING **: You're about to release NuPIC %s (%s). "
+        "This is a big deal. Are you sure you know what you're doing?"
+        % (release_version, release_type)
+      )
+      if not proceed:
+        die(
+          "\nRight. Better safe than sorry. "
+          "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
+        )
+
+    if repo_needs_update(remote):
+      die("Your local repo is not up to date with upstream/master, please sync!")
+
+    release_number = create_release(remote, 
+                                    release_type,
+                                    dev_version,
+                                    previous_version,
+                                    release_version,
+                                    confirm=confirm,
+                                    dry_run=options.dry_run)
+
+    create_development_version(remote,
+                               release_number,
+                               next_release,
+                               dry_run=options.dry_run)
 
     if options.dry_run:
       print "\n%s was committed and tagged locally but not pushed to %s." \
