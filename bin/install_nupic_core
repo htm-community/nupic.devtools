@@ -91,6 +91,9 @@ argstart=$?
 
 pushd "$NUPIC_CORE"
 
+echo "Installing required python packages..."
+pip install -r bindings/py/requirements.txt
+
 echo "Clearing out existing build directory.."
 rm -rf build
 mkdir -p build/scripts
