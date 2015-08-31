@@ -38,7 +38,7 @@ print_usage () {
 
 # cmd line options processing
 process_options () {
-  while getopts "cvnur:" optname
+  while getopts "cvu:" optname
     do
       case "$optname" in
         "c")
@@ -71,5 +71,5 @@ process_options () {
 process_options "$@"
 argstart=$?
 
-install_nupic_core ${clean_option} ${verbose_option} || exit
+install_nupic_core ${clean_option} ${verbose_option} ${user_option} || exit
 install_nupic -n ${clean_option} ${verbose_option} ${user_option}

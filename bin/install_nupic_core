@@ -25,6 +25,7 @@
 clean_build=0
 system=0
 verbose=''
+user_flag=''
 release_dir="${NUPIC_CORE}/build/release"
 
 print_usage () {
@@ -39,6 +40,8 @@ print_usage () {
   echo " -c Clean build, removes old build artifacts."
   echo " -v Verbose console output."
   echo " -s build into system location (if specified, -r is ignored)"
+  echo " -u Installs python requirements for nupic.bindings with the --user"
+  echo "    option."
   echo " -r <release-dir> outputs release to specified directory instead of"
   echo "    ${release_dir} (default)"
   echo
@@ -53,7 +56,7 @@ print_usage () {
 
 # cmd line options processing
 process_options () {
-  while getopts "cvsr:" optname
+  while getopts "cvsur:" optname
     do
       case "$optname" in
         "c")
@@ -64,6 +67,9 @@ process_options () {
           ;;
         "s")
           system=1
+          ;;
+        "u")
+          user_flag="--user"
           ;;
         "r")
           release_dir=$OPTARG
@@ -91,9 +97,47 @@ argstart=$?
 
 pushd "$NUPIC_CORE"
 
-echo "Installing required python packages..."
-pip install -r bindings/py/requirements.txt
+if [ "${clean_build}" -eq "1" ] ; then
+  git clean -dfx
+  pip uninstall nupic.bindings -y
+fi
 
+# Any command that fails exist the script.
+set -e
+
+echo "Installing required python packages..."
+pip install -r bindings/py/requirements.txt ${user_flag}
+
+if [ -d "capnproto-c++-0.5.2" ]; then
+  echo "Cap'n Proto directory exists."
+  if [ "${clean_build}" -eq "1" ] ; then
+    pushd capnproto-c++-0.5.2
+    echo
+    echo "Uninstalling existing version of Cap'n Proto..."
+    sudo make uninstall
+    popd
+  fi
+else
+  echo "Downloading Cap'n Proto..."
+  curl -O https://capnproto.org/capnproto-c++-0.5.2.tar.gz
+  tar zxf capnproto-c++-0.5.2.tar.gz
+  pushd capnproto-c++-0.5.2
+  echo
+  echo "Building Cap'n Proto..."
+  # CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
+  # ARCHFLAGS="-arch x86_64" CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
+  ./configure
+  # ARCHFLAGS="-arch x86_64" ./configure
+  echo
+  echo "Making Cap'n Proto..."
+  make -j6
+  echo
+  echo "Installing Cap'n Proto"
+  sudo make install
+  popd
+fi
+
+echo
 echo "Clearing out existing build directory.."
 rm -rf build
 mkdir -p build/scripts
