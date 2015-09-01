@@ -98,36 +98,46 @@ argstart=$?
 pushd "$NUPIC_CORE"
 
 if [ "${clean_build}" -eq "1" ] ; then
-  git clean -dfx
-  pip uninstall nupic.bindings -y
-fi
-
-# Any command that fails exist the script.
-set -e
-
-echo "Installing required python packages..."
-pip install -r bindings/py/requirements.txt ${user_flag}
-
-if [ -d "capnproto-c++-0.5.2" ]; then
-  echo "Cap'n Proto directory exists."
-  if [ "${clean_build}" -eq "1" ] ; then
+  # Uninstall any existing Cap'n Proto installations.
+  if [ -d "capnproto-c++-0.5.2" ]; then
     pushd capnproto-c++-0.5.2
     echo
     echo "Uninstalling existing version of Cap'n Proto..."
     sudo make uninstall
     popd
   fi
+  # Have to sudo here because the Cap'n Proto files were created with sudo, and
+  # they need to be cleaned up.
+  sudo git clean -dfx
+  pip uninstall nupic.bindings -y
+fi
+
+# Any command that fails exits the script.
+set -e
+
+echo "Installing required python packages..."
+pip install -r bindings/py/requirements.txt ${user_flag}
+
+if [ -d "capnproto-c++-0.5.2" ]; then
+  echo
+  echo "Assuming Cap'n Proto has been installed."
+  echo
 else
   echo "Downloading Cap'n Proto..."
   curl -O https://capnproto.org/capnproto-c++-0.5.2.tar.gz
   tar zxf capnproto-c++-0.5.2.tar.gz
-  pushd capnproto-c++-0.5.2
+
+  pushd "$NUPIC_CORE/capnproto-c++-0.5.2"
   echo
   echo "Building Cap'n Proto..."
+
+  ##### Not sure which one of these commands is going to end up working. #######
+
   # CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
   # ARCHFLAGS="-arch x86_64" CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
-  ./configure
   # ARCHFLAGS="-arch x86_64" ./configure
+  ./configure
+
   echo
   echo "Making Cap'n Proto..."
   make -j6
