@@ -160,7 +160,7 @@ echo
 echo "Calling CMake..."
 if [ "${system}" -eq "1" ]; then
   echo "Installing into system location"
-  VERBOSE="${verbose}" cmake ../../src
+  VERBOSE="${verbose}" cmake ../../src -DCMAKE_PREFIX_PATH="${NUPIC_CORE}/build/capnp"
 elif [ -n "$release_dir" ]; then
   echo "Installing into specified release directory \"${release_dir}\""
   VERBOSE="${verbose}" cmake ../../src -DCMAKE_INSTALL_PREFIX=${release_dir} -DCMAKE_PREFIX_PATH="${NUPIC_CORE}/build/capnp"
