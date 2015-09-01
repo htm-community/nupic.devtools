@@ -27,6 +27,7 @@ system=0
 verbose=''
 user_flag=''
 release_dir="${NUPIC_CORE}/build/release"
+platform=`uname`
 
 print_usage () {
   echo "Installs nupic.core from $NUPIC_CORE directory. By default, this"
@@ -37,7 +38,8 @@ print_usage () {
   echo "> install_nupic_core [options]"
   echo
   echo "Options:"
-  echo " -c Clean build, removes old build artifacts."
+  echo " -c Clean build, removes old build artifacts and uninstalls existing "
+  echo "    versions of Cap'n Proto."
   echo " -v Verbose console output."
   echo " -s build into system location (if specified, -r is ignored)"
   echo " -u Installs python requirements for nupic.bindings with the --user"
@@ -103,17 +105,21 @@ if [ "${clean_build}" -eq "1" ] ; then
     pushd capnproto-c++-0.5.2
     echo
     echo "Uninstalling existing version of Cap'n Proto..."
-    sudo make uninstall
+    make uninstall
     popd
   fi
-  # Have to sudo here because the Cap'n Proto files were created with sudo, and
-  # they need to be cleaned up.
-  sudo git clean -dfx
+  git clean -dfx
   pip uninstall nupic.bindings -y
 fi
 
 # Any command that fails exits the script.
 set -e
+
+echo
+echo "Clearing out existing build directory.."
+rm -rf build
+mkdir -p build/scripts
+mkdir -p build/capnp
 
 echo "Installing required python packages..."
 pip install -r bindings/py/requirements.txt ${user_flag}
@@ -131,26 +137,23 @@ else
   echo
   echo "Building Cap'n Proto..."
 
-  ##### Not sure which one of these commands is going to end up working. #######
-
-  # CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
-  # ARCHFLAGS="-arch x86_64" CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure
-  # ARCHFLAGS="-arch x86_64" ./configure
-  ./configure
+  if [[ "$platform" == 'Darwin' ]]; then
+    # OS X
+    ./configure --prefix="${NUPIC_CORE}/build/capnp"
+  else
+    # Linux
+    CXXFLAGS="-fPIC -std=c++11 -m64 -fvisibility=hidden -Wall -Wreturn-type -Wunused -Wno-unused-parameter" ./configure --prefix="${NUPIC_CORE}/build/capnp"
+  fi
 
   echo
   echo "Making Cap'n Proto..."
   make -j6
   echo
   echo "Installing Cap'n Proto"
-  sudo make install
+  make install
   popd
 fi
 
-echo
-echo "Clearing out existing build directory.."
-rm -rf build
-mkdir -p build/scripts
 pushd build/scripts
 
 echo
@@ -160,7 +163,7 @@ if [ "${system}" -eq "1" ]; then
   VERBOSE="${verbose}" cmake ../../src
 elif [ -n "$release_dir" ]; then
   echo "Installing into specified release directory \"${release_dir}\""
-  VERBOSE="${verbose}" cmake ../../src -DCMAKE_INSTALL_PREFIX=${release_dir}
+  VERBOSE="${verbose}" cmake ../../src -DCMAKE_INSTALL_PREFIX=${release_dir} -DCMAKE_PREFIX_PATH="${NUPIC_CORE}/build/capnp"
 fi
 
 # optionally start a fresh build
