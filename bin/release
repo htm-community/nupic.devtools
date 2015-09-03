@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
@@ -112,8 +113,10 @@ parser.add_option(
   "--next-release",
   default=None,
   dest="next_release",
-  help="What the next release version will be (if not supplied, "
-       "rollover to bugfix release.")
+  help="After this release has completed, what will the next release version"
+       "be (if not supplied, it will rollover to bugfix release. You won't"
+       "need to use this option unless you need to the next release to break"
+       "semantic versioning.")
 parser.add_option(
   "-s",
   "--semantic-release-type",
@@ -284,7 +287,7 @@ def create_release(remote,
                    release_version,
                    confirm=True,
                    dry_run=False):
-  
+
   git_command = "git log %s..HEAD --oneline" % previous_version
   debug(git_command)
   # These are all the commit messages since the last release.
@@ -304,7 +307,7 @@ def create_release(remote,
 
   print "\nUpdating files..."
 
-  # In the README, we want to replace the last release version with the next 
+  # In the README, we want to replace the last release version with the next
   # release version.
   debug("\tUpdating README.md...")
   replace_in_file(previous_version, release_version, README_FILE)
@@ -379,7 +382,7 @@ def create_release(remote,
     git_command = "git push %s master" % remote
     debug(git_command)
     subprocess.call(git_command, shell=True)
-    
+
     git_command = "git push %s %s" % (remote, release_version)
     debug(git_command)
     subprocess.call(git_command, shell=True)
@@ -387,9 +390,12 @@ def create_release(remote,
   return release_version
 
 
-def get_next_release_version():
-  with open(VERSION_FILE, "r") as f:
-    last_version = f.read().replace('\n', '')
+def get_next_release_version(this_release=None):
+  if this_release:
+    last_version = this_release
+  else:
+    with open(VERSION_FILE, "r") as f:
+      last_version = f.read().replace('\n', '')
   if last_version[-5:] == DEV_SUFFIX:
     last_version = last_version[0:(0-len(DEV_SUFFIX))]
   dev_split = [int(i) for i in last_version.split('.')]
@@ -452,11 +458,6 @@ if __name__ == "__main__":
   confirm = not options.auto_confirm
   next_release = options.next_release
 
-  if next_release is None:
-    next_release = get_next_release_version()
-  elif next_release[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
-    next_release += DEV_SUFFIX
-
   if release_type not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
     die("Invalid semantic release type \"%s\"." % release_type)
 
@@ -478,15 +479,23 @@ if __name__ == "__main__":
 
     previous_version, release_version = find_versions(dev_version, release_type)
 
-    print "\nExecuting %s release." % release_type
-    print "Updating version from %s to %s" % (dev_version, release_version)
-    print "Previous release was %s" % previous_version
-    print "Next development version will be %s" % next_release
+    if next_release is None:
+      next_release = get_next_release_version(release_version)
+    elif next_release[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
+      next_release += DEV_SUFFIX
+
+
+    print "\n ***************************************"
+    print   " * Executing %s release." % release_type
+    print   " ***************************************\n"
+    print "  ➤ Updating version from %s to %s" % (dev_version, release_version)
+    print "  ➤ Previous release was %s" % previous_version
+    print "  ➤ Next development version will be %s" % next_release
 
     if confirm:
       proceed = query_yes_no(
-        "\n** WARNING **: You're about to release NuPIC %s (%s). "
-        "This is a big deal. Are you sure you know what you're doing?"
+        "\n\t** WARNING **: You're about to release NuPIC %s (%s).\n"
+        "\tThis is a big deal. Are you sure you know what you're doing?"
         % (release_version, release_type)
       )
       if not proceed:
@@ -498,7 +507,7 @@ if __name__ == "__main__":
     if repo_needs_update(remote):
       die("Your local repo is not up to date with upstream/master, please sync!")
 
-    release_number = create_release(remote, 
+    release_number = create_release(remote,
                                     release_type,
                                     dev_version,
                                     previous_version,
