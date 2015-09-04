@@ -34,7 +34,6 @@ README_FILE = "README.md"
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
 DOXYFILE = "docs/Doxyfile"
-INIT_FILE = "nupic/__init__.py"
 
 # Used for creating the next version after the release. After 1.2.3 comes
 # 1.2.3.dev0. Named this way because distutils complains if you use "-dev".
@@ -199,8 +198,8 @@ def tag_exists(tag):
 def bail_out(msg):
   debug("Checking out changed files before bailing out...")
 
-  git_command = "git checkout %s %s %s %s" \
-                % (CHANGELOG_FILE, VERSION_FILE, DOXYFILE, INIT_FILE)
+  git_command = "git checkout %s %s %s" \
+                % (CHANGELOG_FILE, VERSION_FILE, DOXYFILE)
   debug(git_command)
   subprocess.call(git_command, shell=True)
   die(msg)
@@ -313,7 +312,7 @@ def create_release(remote,
   replace_in_file(previous_version, release_version, README_FILE)
 
   # These files can be updated with a simple find/replace:
-  for target_file in [VERSION_FILE, DOXYFILE, INIT_FILE]:
+  for target_file in [VERSION_FILE, DOXYFILE]:
     debug("\tUpdating %s..." % target_file)
     replace_in_file(dev_version, release_version, target_file)
 
@@ -414,9 +413,6 @@ def create_development_version(remote, last_version, dev_version, dry_run=False)
 
   debug("\tUpdating Doxyfile...")
   replace_in_file(last_version, dev_version, DOXYFILE)
-
-  debug("\tUpdating nupic/__init__.py...")
-  replace_in_file(last_version, dev_version, INIT_FILE)
 
   print "\nCommitting dev version..."
   git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
