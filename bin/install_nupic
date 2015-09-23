@@ -27,7 +27,6 @@ clean_build=0
 verbose=''
 user_flag=''
 core_release_dir=''
-default_core_release_dir="${NUPIC_CORE}/build/release"
 
 print_usage () {
   echo "Installs NuPIC from $NUPIC directory. If nupic.core release directory"
@@ -41,18 +40,6 @@ print_usage () {
   echo " -c Clean build, removes old build artifacts."
   echo " -v Verbose console output."
   echo " -u Runs python setup.py install with the --user option."
-  echo " -n Builds using nupic.core release at ${default_core_release_dir}"
-  echo " -r <release-dir> Builds using nupic.core release at specified "
-  echo "    directory instead of ${default_core_release_dir}."
-  echo
-  echo "Examples:"
-  echo "An installation using downloaded nupic.core binary release:"
-  echo "    > install_nupic"
-  echo "A clean verbose installation using nupic.core at "
-  echo "${default_core_release_dir}:" 
-  echo "    > install_nupic -cvn"
-  echo "A clean installation using nupic.core at specified location (/tmp):"
-  echo "    > install_nupic -cv -r /tmp"
 }
 
 # cmd line options processing
@@ -68,12 +55,6 @@ process_options () {
           ;;
         "u")
           user_flag="--user"
-          ;;
-        "n")
-          core_release_dir="${default_core_release_dir}"
-          ;;
-        "r")
-          core_release_dir="${OPTARG}"
           ;;
         "?")
           print_usage
@@ -103,15 +84,7 @@ if [ "${clean_build}" -eq "1" ] ; then
   rm -rf build dist
 fi
 
-# User had a chance to define the core_release_dir with either -r or -u options.
-# If not set, it means we don't use it at all and let NuPIC download the binary.
-if [ -n "$core_release_dir" ]; then
-  echo "Building NuPIC using nupic.core release at ${core_release_dir}..."
-  VERBOSE="${verbose}" python setup.py install ${user_flag} --nupic-core-dir=${core_release_dir}
-else
-  echo "Building NuPIC using nupic.core binary download..."
-  VERBOSE="${verbose}" python setup.py install ${user_flag}
-fi
-
+echo "Building NuPIC assuming nupic.bindings has been installed..."
+VERBOSE="${verbose}" python setup.py install ${user_flag}
 
 popd
