@@ -115,7 +115,7 @@ It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment var
 ```
   -h, --help            show this help message and exit
   -v, --verbose         Print debugging statements.
-  -d, --dry_run         Prevents pushing to remote branch.
+  -d, --dry-run         Prevents pushing to remote branch.
   -y, --yes             Prevents command line confirmation for the release.
                         Hopefully you know what you're doing.
   -r REMOTE, --remote=REMOTE
