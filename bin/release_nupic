@@ -82,7 +82,7 @@ parser.add_option(
   help="Print debugging statements.")
 parser.add_option(
   "-d",
-  "--dry_run",
+  "--dry-run",
   action="store_true",
   default=False,
   dest="dry_run",
@@ -272,50 +272,12 @@ def get_release_notes(release_number):
 
 
 
-
-def create_release(remote,
-                   release_type,
-                   dev_version,
-                   previous_version,
-                   release_version,
-                   confirm=True,
-                   dry_run=False):
-
-  git_command = "git log %s..HEAD --oneline" % previous_version
-  debug(git_command)
-  # These are all the commit messages since the last release.
-  gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
-
-  # Remove the last log line, because it will just be a commit bumping the
-  # version to X.Y.Z.dev0.
-  del gitlog[-1]
-
-  if len(gitlog) == 0:
-    die("Release contains no changes. Bailing out!")
-
-  print "This release contains %i commit(s)." % len(gitlog)
-
-  # Strip the SHAs off the beginnings of the commit messages.
-  gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
-
-  print "\nUpdating files..."
-
-  # In the README, we want to replace the last release version with the next
-  # release version.
-  debug("\tUpdating README.md...")
-  replace_in_file(previous_version, release_version, README_FILE)
-
-  # These files can be updated with a simple find/replace:
-  for target_file in [VERSION_FILE, DOXYFILE]:
-    debug("\tUpdating %s..." % target_file)
-    replace_in_file(dev_version, release_version, target_file)
-
+def update_changelog(gitlog, release_version):
   # Changelog needs a little more care.
   debug("\tUpdating CHANGELOG.md...")
   # This is a bit more complex than a substitution.
   with open(CHANGELOG_FILE, "r") as f:
     changelog_contents = f.readlines()
-
   new_changelog_contents = []
   for line in changelog_contents:
     # At the top of the changelog, add a line for this release version.
@@ -327,8 +289,8 @@ def create_release(remote,
       for log_line in gitlog:
         # There are some commit messages we can always ignore.
         if not log_line.startswith("Merge pull request") \
-        and not log_line.startswith("Merge branch") \
-        and not log_line.startswith("Updates nupic.core to"):
+                and not log_line.startswith("Merge branch") \
+                and not log_line.startswith("Updates nupic.core to"):
           # Ask the user doing the release if they want each commit message in the
           # changelog.
           include = "Include this change in the CHANGELOG?\n\t\"%s\"" % log_line
@@ -337,10 +299,8 @@ def create_release(remote,
             new_changelog_contents.append("* %s\n" % log_line)
     else:
       new_changelog_contents.append(line)
-
   with open(CHANGELOG_FILE, "wb") as f:
     f.writelines(new_changelog_contents)
-
   manual_changelog_change = query_yes_no(
     "\nDo you want to make any manual changes to the CHANGELOG file before "
     "continuing?"
@@ -348,11 +308,31 @@ def create_release(remote,
   if manual_changelog_change:
     pause("Edit the CHANGELOG.md file now and save without committing.")
 
+
+
+def update_nupic_files(dev_version, gitlog, previous_version, release_version):
+  print "\nUpdating files..."
+  # In the README, we want to replace the last release version with the next
+  # release version.
+  debug("\tUpdating README.md...")
+  replace_in_file(previous_version, release_version, README_FILE)
+  # These files can be updated with a simple find/replace:
+  for target_file in [VERSION_FILE, DOXYFILE]:
+    debug("\tUpdating %s..." % target_file)
+    replace_in_file(dev_version, release_version, target_file)
+  update_changelog(gitlog, release_version)
+
+
+
+def commit_release(release_version):
   print "\nCommitting release..."
   git_command = "git commit -am \"Release %s.\" --no-verify" % release_version
   debug(git_command)
   subprocess.call(git_command, shell=True)
 
+
+
+def tag_release(release_version):
   print "\nTagging release..."
   if tag_exists(release_version):
     delete_tag = query_yes_no(
@@ -364,21 +344,59 @@ def create_release(remote,
       subprocess.call(git_command, shell=True)
     else:
       die("A tag for release %s already exists." % release_version)
-
   git_command = "git tag -a %s -m \"Release %s\"" \
                 % (release_version, release_version)
   debug(git_command)
   subprocess.call(git_command, shell=True)
 
-  if not dry_run:
-    print "\nPushing to %s..." % remote
-    git_command = "git push %s master" % remote
-    debug(git_command)
-    subprocess.call(git_command, shell=True)
 
-    git_command = "git push %s %s" % (remote, release_version)
-    debug(git_command)
-    subprocess.call(git_command, shell=True)
+def push_release(release_version, remote):
+  print "\nPushing to %s..." % remote
+  git_command = "git push %s master" % remote
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+  git_command = "git push %s %s" % (remote, release_version)
+  debug(git_command)
+  subprocess.call(git_command, shell=True)
+
+
+
+def get_git_log(previous_version):
+  git_command = "git log %s..HEAD --oneline" % previous_version
+  debug(git_command)
+  # These are all the commit messages since the last release.
+  gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
+  # Remove the last log line, because it will just be a commit bumping the
+  # version to X.Y.Z.dev0.
+  del gitlog[-1]
+  return gitlog
+
+
+
+def create_release(remote,
+                   release_type,
+                   dev_version,
+                   previous_version,
+                   release_version,
+                   confirm=True,
+                   dry_run=False):
+
+  gitlog = get_git_log(previous_version)
+
+  if len(gitlog) == 0:
+    die("Release contains no changes. Bailing out!")
+
+  print "This release contains %i commit(s)." % len(gitlog)
+
+  # Strip the SHAs off the beginnings of the commit messages.
+  gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
+
+  update_nupic_files(dev_version, gitlog, previous_version, release_version)
+  commit_release(release_version)
+  tag_release(release_version)
+
+  if not dry_run:
+    push_release(release_version, remote)
 
   return release_version
 
