@@ -28,6 +28,7 @@ README_FILE = "README.md"
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
 DOXYFILE = "docs/Doxyfile"
+REQUIREMENTS_FILE = "external/common/requirements.txt"
 
 # Used for creating the next version after the release. After 1.2.3 comes
 # 1.2.3.dev0. Named this way because distutils complains if you use "-dev".
@@ -310,6 +311,31 @@ def update_changelog(gitlog, release_version):
 
 
 
+def update_nupic_bindings_version():
+  print "\nUpdating nupic.bindings version number in README.md..."
+  required_bindings_version = None
+  current_bindings_version = None
+  with open(REQUIREMENTS_FILE, "r") as f:
+    for line in f.readlines():
+      if line.startswith("nupic.bindings"):
+        required_bindings_version = line.split("==")[-1].strip()
+  if required_bindings_version is None:
+    raise Exception("Could not identify nupic.bindings version from %s."
+                    % REQUIREMENTS_FILE)
+  with open(README_FILE, "r") as f:
+    for line in f.readlines():
+      if "nupic.bindings/nupic.bindings-" in line:
+        # Find the nupic.bindings version number to replace
+        current_bindings_version = line.split("/")[-1].split("-")[1].strip()
+  if required_bindings_version != current_bindings_version:
+    print "Updating nupic.bindings version from %s to %s" \
+          % (current_bindings_version, required_bindings_version)
+    replace_in_file(
+      current_bindings_version, required_bindings_version, README_FILE
+    )
+
+
+
 def update_nupic_files(dev_version, gitlog, previous_version, release_version):
   print "\nUpdating files..."
   # In the README, we want to replace the last release version with the next
@@ -320,6 +346,7 @@ def update_nupic_files(dev_version, gitlog, previous_version, release_version):
   for target_file in [VERSION_FILE, DOXYFILE]:
     debug("\tUpdating %s..." % target_file)
     replace_in_file(dev_version, release_version, target_file)
+  update_nupic_bindings_version()
   update_changelog(gitlog, release_version)
 
 
