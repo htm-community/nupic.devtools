@@ -102,14 +102,14 @@ Pushes a new NuPIC release using git tags and the GitHub API. Users must have pu
 - git
 - Push access to target git repository
 - `export GH_ACCESS_TOKEN=<token>` ([GitHub access token](https://github.com/blog/1509-personal-api-tokens))
+  - > Be sure you choose "admin" permissions!
 - `export NUPIC=<path-to-nupic-checkout>`
 - `pip install libsaas` (For GitHub API calls to publish release)
 
 ## Usage
 
-> ./release [options]
-
-It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
+    > cd $NUPIC
+    > <path/to/>release_nupic [options]
 
 ##Options
 ```
