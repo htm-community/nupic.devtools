@@ -24,21 +24,19 @@ from libsaas.services import github
 from libsaas.http import HTTPError
 
 # Files that will be modified.
-README_FILE = "README.md"
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
-DOXYFILE = "docs/Doxyfile"
-REQUIREMENTS_FILE = "external/common/requirements.txt"
+DOXYFILE = "Doxyfile"
 
 # Used for creating the next version after the release. After 1.2.3 comes
 # 1.2.3.dev0. Named this way because distutils complains if you use "-dev".
 # You know you hate it when distutils complains.
 DEV_SUFFIX = ".dev0"
 
-NUPIC = None
+NUPIC_CORE = None
 GH_TOKEN = None
 
-SLUG = "numenta/nupic"
+SLUG = "numenta/nupic.core"
 
 CWD = os.getcwd()
 
@@ -57,21 +55,21 @@ gh = None
 parser = OptionParser(
   usage="%prog [options]\n\n"
         """
-Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+Pushes a new NuPIC Core release using git tags and the GitHub API. Users must have push access and a GitHub access token.
 
 ## Requirements:
 - git
 - [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
   - `export GH_ACCESS_TOKEN=<token>`
-- `export NUPIC=<path-to-nupic-checkout>`
+- `export NUPIC_CORE=<path-to-nupic.core-checkout>`
 - Push access to target git repository
 - `pip install libsaas`
 
 ## Usage
 
-> ./release_nupic [options]
+> ./release_nupic_core [options]
 
-It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
+It's assumed you're releasing NuPIC Core, so the value of the `NUPIC_CORE` environment variable will be used for the repository location.
         """
 )
 parser.add_option(
@@ -311,42 +309,37 @@ def updateChangelog(gitlog, release_version):
 
 
 
-def updateNupicBindingsVersion():
-  print "\nUpdating nupic.bindings version number in README.md..."
-  required_bindings_version = None
-  current_bindings_version = None
-  with open(REQUIREMENTS_FILE, "r") as f:
-    for line in f.readlines():
-      if line.startswith("nupic.bindings"):
-        required_bindings_version = line.split("==")[-1].strip()
-  if required_bindings_version is None:
-    raise Exception("Could not identify nupic.bindings version from %s."
-                    % REQUIREMENTS_FILE)
-  with open(README_FILE, "r") as f:
-    for line in f.readlines():
-      if "nupic.bindings/nupic.bindings-" in line:
-        # Find the nupic.bindings version number to replace
-        current_bindings_version = line.split("/")[-1].split("-")[1].strip()
-  if required_bindings_version != current_bindings_version:
-    print "Updating nupic.bindings version from %s to %s" \
-          % (current_bindings_version, required_bindings_version)
-    replaceInFile(
-      current_bindings_version, required_bindings_version, README_FILE
-    )
+# def updateNupicBindingsVersion():
+#   print "\nUpdating nupic.bindings version number in README.md..."
+#   required_bindings_version = None
+#   current_bindings_version = None
+#   with open(REQUIREMENTS_FILE, "r") as f:
+#     for line in f.readlines():
+#       if line.startswith("nupic.bindings"):
+#         required_bindings_version = line.split("==")[-1].strip()
+#   if required_bindings_version is None:
+#     raise Exception("Could not identify nupic.bindings version from %s."
+#                     % REQUIREMENTS_FILE)
+#   with open(README_FILE, "r") as f:
+#     for line in f.readlines():
+#       if "nupic.bindings/nupic.bindings-" in line:
+#         # Find the nupic.bindings version number to replace
+#         current_bindings_version = line.split("/")[-1].split("-")[1].strip()
+#   if required_bindings_version != current_bindings_version:
+#     print "Updating nupic.bindings version from %s to %s" \
+#           % (current_bindings_version, required_bindings_version)
+#     replaceInFile(
+#       current_bindings_version, required_bindings_version, README_FILE
+#     )
 
 
 
-def updateNupicFiles(dev_version, gitlog, previous_version, release_version):
+def updateNupicCoreFiles(dev_version, gitlog, previous_version, release_version):
   print "\nUpdating files..."
-  # In the README, we want to replace the last release version with the next
-  # release version.
-  debug("\tUpdating README.md...")
-  replaceInFile(previous_version, release_version, README_FILE)
   # These files can be updated with a simple find/replace:
   for target_file in [VERSION_FILE, DOXYFILE]:
     debug("\tUpdating %s..." % target_file)
     replaceInFile(dev_version, release_version, target_file)
-  updateNupicBindingsVersion()
   updateChangelog(gitlog, release_version)
 
 
@@ -401,12 +394,12 @@ def getGitLog(previous_version):
 
 
 def createRelease(remote,
-                   release_type,
-                   dev_version,
-                   previous_version,
-                   release_version,
-                   confirm=True,
-                   dry_run=False):
+                  release_type,
+                  dev_version,
+                  previous_version,
+                  release_version,
+                  confirm=True,
+                  dry_run=False):
 
   gitlog = getGitLog(previous_version)
 
@@ -418,7 +411,7 @@ def createRelease(remote,
   # Strip the SHAs off the beginnings of the commit messages.
   gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
 
-  updateNupicFiles(dev_version, gitlog, previous_version, release_version)
+  updateNupicCoreFiles(dev_version, gitlog, previous_version, release_version)
   commitRelease(release_version)
   tagRelease(release_version)
 
@@ -484,9 +477,9 @@ def createGithubRelease(tag, changes):
 if __name__ == "__main__":
   (options, args) = parser.parse_args(sys.argv[1:])
 
-  if "NUPIC" not in os.environ:
-    die("Set the NUPIC environment variable.")
-  NUPIC = os.environ["NUPIC"]
+  if "NUPIC_CORE" not in os.environ:
+    die("Set the NUPIC_CORE environment variable.")
+  NUPIC_CORE = os.environ["NUPIC_CORE"]
   if "GH_ACCESS_TOKEN" not in os.environ:
     die("Set the GH_ACCESS_TOKEN environment variable.")
   GH_TOKEN = os.environ["GH_ACCESS_TOKEN"]
@@ -502,7 +495,7 @@ if __name__ == "__main__":
 
   # Unpublished feature: first argument can be a path to a repository location.
   # Currently used for testing this script.
-  repo = NUPIC
+  repo = NUPIC_CORE
   if len(args) > 0:
     repo = os.path.abspath(args[0])
 
@@ -533,7 +526,7 @@ if __name__ == "__main__":
 
     if confirm:
       proceed = queryYesNo(
-        "\n\t** WARNING **: You're about to release NuPIC %s (%s).\n"
+        "\n\t** WARNING **: You're about to release NuPIC Core %s (%s).\n"
         "\tThis is a big deal. Are you sure you know what you're doing?"
         % (release_version, release_type)
       )
