@@ -376,20 +376,20 @@ class Release(object):
 
   def createDevelopmentVersion(self):
     lastVersion = self.releaseVersion
-    devVersion = self.devVersion
+    nextRelease = self.nextRelease
     remote = self.remote
-    print "\nUpdating version from %s to %s." % (lastVersion, devVersion)
+    print "\nUpdating version from %s to %s." % (lastVersion, nextRelease)
   
     print "\nUpdating files..."
     self.debug("\tUpdating VERSION...")
-    replaceInFile(lastVersion, devVersion, VERSION_FILE)
+    replaceInFile(lastVersion, nextRelease, VERSION_FILE)
   
     self.debug("\tUpdating Doxyfile...")
-    replaceInFile(lastVersion, devVersion, self.doxyFilePath)
+    replaceInFile(lastVersion, nextRelease, self.doxyFilePath)
   
     print "\nCommitting dev version..."
     git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
-                  % devVersion
+                  % nextRelease
     self.debug(git_command)
     subprocess.call(git_command, shell=True)
   
@@ -480,6 +480,8 @@ class Release(object):
         nextRelease = getNextReleaseVersion(releaseVersion)
       elif nextRelease[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
         nextRelease += DEV_SUFFIX
+  
+      self.nextRelease = nextRelease
   
       print "\n ***************************************"
       print   " * Executing %s release to %s" % (releaseType, releaseVersion)
