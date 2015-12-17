@@ -517,7 +517,7 @@ class Release(object):
       else:
         try:
           release_url = self.createGithubRelease(
-            self.releaseVersion, self.getReleaseNotes(self.releaseVersion)
+            self.releaseVersion, getReleaseNotes(self.releaseVersion)
           )
           print "See %s" % release_url
         except HTTPError as http_error:
