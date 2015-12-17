@@ -353,7 +353,7 @@ class Release(object):
       pause("Edit the CHANGELOG.md file now and save without committing.")
 
 
-  def updateNupicFiles(self, gitlog, userFunction):
+  def updateFiles(self, gitlog, userFunction):
     releaseVersion = self.releaseVersion
     print "\nUpdating files..."
     # In the README, we want to replace the last release version with the next
@@ -368,6 +368,7 @@ class Release(object):
     # Allows the user of the release to write their own code to run at this
     # point, most likely to update files in the repo.
     if userFunction is not None:
+      print "Executing user-provided function within context of Release..."
       userFunction(self)
     
     self.updateChangelog(gitlog, releaseVersion)
@@ -410,6 +411,26 @@ class Release(object):
     return release["html_url"]
 
 
+  def createRelease(self, userFunction):
+    dryRun = self.options.dryRun
+    gitlog = self.getGitLog()
+  
+    if len(gitlog) == 0:
+      die("Release contains no changes. Bailing out!")
+  
+    print "This release contains %i commit(s)." % len(gitlog)
+  
+    # Strip the SHAs off the beginnings of the commit messages.
+    gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
+  
+    self.updateFiles(gitlog, userFunction)
+    self.commitRelease()
+    self.tagRelease()
+  
+    if not dryRun:
+      self.pushRelease()
+
+
   #### PUBLIC ####
 
 
@@ -437,26 +458,6 @@ class Release(object):
       self.repoRootPath = os.path.abspath(args[0])
   
     self.confirmUserHasPushAccess()
-
-
-  def createRelease(self, userFunction):
-    dryRun = self.options.dryRun
-    gitlog = self.getGitLog()
-  
-    if len(gitlog) == 0:
-      die("Release contains no changes. Bailing out!")
-  
-    print "This release contains %i commit(s)." % len(gitlog)
-  
-    # Strip the SHAs off the beginnings of the commit messages.
-    gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
-  
-    self.updateNupicFiles(gitlog, userFunction)
-    self.commitRelease()
-    self.tagRelease()
-  
-    if not dryRun:
-      self.pushRelease()
 
 
   def release(self, userFunction=None):

@@ -1,10 +1,10 @@
 # NuPIC Developer Tools
 
-# NuPIC Core Release Script
+This repository contains developer tools for NuPIC.
 
-# NuPIC Release Script
+## NuPIC / NuPIC Core Release Scripts
 
-Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
+Pushes a new release using git tags and the GitHub API. Users must have push access and a GitHub access token.
 
 ## Requirements:
 - git
@@ -16,10 +16,17 @@ Pushes a new NuPIC release using git tags and the GitHub API. Users must have pu
 
 ## Usage
 
+To release NuPIC:
+
     > cd $NUPIC
     > <path/to/>release_nupic [options]
 
-##Options
+To release NuPIC Core:
+
+    > cd $NUPIC_CORE
+    > <path/to/>release_nupic_core [options]
+
+## Options
 ```
   -h, --help            show this help message and exit
   -v, --verbose         Print debugging statements.
