@@ -176,13 +176,6 @@ def getNextReleaseVersion(thisRelease=None):
   return "%s%s" % (next_version, DEV_SUFFIX)
 
 
-def replaceInFile(from_value, to_value, file_path):
-  with open(file_path, "r") as f:
-    contents = f.read()
-  with open(file_path, "wb") as f:
-    f.write(contents.replace(from_value, to_value))
-
-
 def pause(message):
   sys.stdout.write(message + " To resume this script, press enter.")
   raw_input()
@@ -227,6 +220,13 @@ class Release(object):
   def debug(self, msg):
     if self.verbose:
       print msg
+
+
+  def replaceInFile(self, from_value, to_value, file_path):
+    with open(file_path, "r") as f:
+      contents = f.read()
+    with open(file_path, "wb") as f:
+      f.write(contents.replace(from_value, to_value))
 
 
   def getGitLog(self):
@@ -353,23 +353,23 @@ class Release(object):
       pause("Edit the CHANGELOG.md file now and save without committing.")
 
 
-  def updateFiles(self, gitlog, userFunction):
+  def updateFiles(self, gitlog, userOnReleaseFn):
     releaseVersion = self.releaseVersion
     print "\nUpdating files..."
     # In the README, we want to replace the last release version with the next
     # release version.
     self.debug("\tUpdating README.md...")
-    replaceInFile(self.previousVersion, releaseVersion, README_FILE)
+    self.replaceInFile(self.previousVersion, releaseVersion, README_FILE)
     # These files can be updated with a simple find/replace:
     for target_file in [VERSION_FILE, self.doxyFilePath]:
       self.debug("\tUpdating %s..." % target_file)
-      replaceInFile(self.devVersion, releaseVersion, target_file)
+      self.replaceInFile(self.devVersion, releaseVersion, target_file)
     
     # Allows the user of the release to write their own code to run at this
     # point, most likely to update files in the repo.
-    if userFunction is not None:
+    if userOnReleaseFn is not None:
       print "Executing user-provided function within context of Release..."
-      userFunction(self)
+      userOnReleaseFn(self)
     
     self.updateChangelog(gitlog, releaseVersion)
 
@@ -382,10 +382,10 @@ class Release(object):
   
     print "\nUpdating files..."
     self.debug("\tUpdating VERSION...")
-    replaceInFile(lastVersion, nextRelease, VERSION_FILE)
+    self.replaceInFile(lastVersion, nextRelease, VERSION_FILE)
   
     self.debug("\tUpdating Doxyfile...")
-    replaceInFile(lastVersion, nextRelease, self.doxyFilePath)
+    self.replaceInFile(lastVersion, nextRelease, self.doxyFilePath)
   
     print "\nCommitting dev version..."
     git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
@@ -411,7 +411,7 @@ class Release(object):
     return release["html_url"]
 
 
-  def createRelease(self, userFunction):
+  def createRelease(self, userOnReleaseFn):
     dryRun = self.options.dryRun
     gitlog = self.getGitLog()
   
@@ -423,7 +423,7 @@ class Release(object):
     # Strip the SHAs off the beginnings of the commit messages.
     gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
   
-    self.updateFiles(gitlog, userFunction)
+    self.updateFiles(gitlog, userOnReleaseFn)
     self.commitRelease()
     self.tagRelease()
   
@@ -460,7 +460,7 @@ class Release(object):
     self.confirmUserHasPushAccess()
 
 
-  def release(self, userFunction=None):
+  def release(self, userOnReleaseFn=None):
     repo = self.repoRootPath
     nextRelease = self.nextRelease
     releaseType = self.releaseType
@@ -505,7 +505,7 @@ class Release(object):
       if self.repoNeedsUpdate():
         die("Your local repo is not up to date with upstream/master, please sync!")
   
-      self.createRelease(userFunction)
+      self.createRelease(userOnReleaseFn)
 
       self.createDevelopmentVersion()
   
