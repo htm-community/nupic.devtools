@@ -1,1 +1,3 @@
 from release import Release
+from nupic_release import NupicRelease
+from nupic_core_release import NupicCoreRelease

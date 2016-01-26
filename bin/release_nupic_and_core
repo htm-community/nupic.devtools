@@ -15,35 +15,23 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # ----------------------------------------------------------------------
 import sys
-import os
 
-from releasetools.nupic_release import NupicRelease
-from releasetools.nupic_core_release import NupicCoreRelease
+from releasetools import NupicRelease
+from releasetools import NupicCoreRelease
+
 
 if __name__ == "__main__":
 
-  if "NUPIC" not in os.environ:
-    print("Set the NUPIC environment variable.")
-    exit(-1)
-  if "NUPIC_CORE" not in os.environ:
-    print("Set the NUPIC_CORE environment variable.")
-    exit(-1)
-
-  coreRelease = NupicCoreRelease(
-    sys.argv[1:], 
-    os.environ["NUPIC_CORE"]
-  )
-  nupicRelease = NupicRelease(
-    sys.argv[1:], 
-    os.environ["NUPIC"]
-  )
+  cliArgs = sys.argv[1:]
+  
+  coreRelease = NupicCoreRelease(cliArgs)
+  nupicRelease = NupicRelease(cliArgs)
   
   coreRelease.check()
   nupicRelease.check()
+  
+  coreReleaseSha, coreDevelopmentSha = coreRelease.release()
 
-  
-  coreReleaseSha = coreRelease.release()
-  
-  nupicRelease.release(coreReleaseSha)
+  nupicRelease.release(coreReleaseSha, coreDevelopmentSha)
 
 

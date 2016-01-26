@@ -12,25 +12,25 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # ----------------------------------------------------------------------
+import os
 import subprocess
 
-from releasetools import Release
+from . import Release
+
+
+NAME = "NUPIC_CORE"
 
 
 class NupicCoreRelease(Release):
 
 
-  def commitRelease(self):
-    super(NupicCoreRelease, self).commitRelease()
-    self.releaseSha = subprocess.check_output(
-      "git rev-parse HEAD", shell=True
-    ).strip()
-  
-  
+  def __init__(self, cliArgs):
+    if NAME not in os.environ:
+      raise ValueError("You must set a '%s' environment var!" % NAME)
+    rootPath = os.environ[NAME] 
+    super(NupicCoreRelease, self).__init__(cliArgs, rootPath, NAME)
+
+
   def release(self):
     super(NupicCoreRelease, self).release()
-    return self.getReleaseSha()
-
-
-  def getReleaseSha(self):
-    return self.releaseSha
+    return self.getReleaseSha(), self.getDevelopmentSha()

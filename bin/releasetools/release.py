@@ -214,12 +214,15 @@ def getReleaseNotes(release_number):
 class Release(object):
 
 
-  def __init__(self, cliArgs, repoRootPath):
+  def __init__(self, cliArgs, repoRootPath, name="Unknown"):
     parser = createOptionsParser()
     (options, args) = parser.parse_args(cliArgs)
     self.options = options
     self.args = args
     self.repoRootPath = repoRootPath
+    self.name = name
+    self.releaseSha = None
+    self.devSha = None
     self.verbose = None
     self.remote = None
     self.releaseType = None
@@ -234,6 +237,14 @@ class Release(object):
   def debug(self, msg):
     if self.verbose:
       print msg
+
+
+  def getReleaseSha(self):
+    return self.releaseSha
+
+
+  def getDevelopmentSha(self):
+    return self.devSha
 
 
   def getReadmePath(self):
@@ -268,6 +279,9 @@ class Release(object):
     git_command = "git commit -am \"Release %s.\" --no-verify" % self.releaseVersion
     self.debug(git_command)
     subprocess.call(git_command, shell=True)
+    self.releaseSha = subprocess.check_output(
+      "git rev-parse HEAD", shell=True
+    ).strip()
 
 
   def releaseTagExists(self):
@@ -329,7 +343,7 @@ class Release(object):
 
   def confirmUserHasPushAccess(self):
     remote = self.remote
-    self.debug("Checking if user has push access to %s..." % remote)
+    self.debug("Checking if user has push access to %s %s..." % (self.name, remote))
     gitCommand = "git push --dry-run %s master" % remote
     self.debug(gitCommand)
     status = subprocess.call(gitCommand, shell=True)
@@ -408,7 +422,10 @@ class Release(object):
                   % nextRelease
     self.debug(git_command)
     subprocess.call(git_command, shell=True)
-  
+    self.devSha = subprocess.check_output(
+      "git rev-parse HEAD", shell=True
+    ).strip()
+
     if not self.options.dryRun:
       print "\nPushing %s..." % remote
       git_command = "git push %s master" % remote
@@ -454,26 +471,32 @@ class Release(object):
     options = self.options
     args = self.args
 
-    if "GH_ACCESS_TOKEN" not in os.environ:
-      die("Set the GH_ACCESS_TOKEN environment variable.")
-    self.ghToken = os.environ["GH_ACCESS_TOKEN"]
+    cwd = os.getcwd()
+    os.chdir(self.repoRootPath)
+    
+    try:
+      if "GH_ACCESS_TOKEN" not in os.environ:
+        die("Set the GH_ACCESS_TOKEN environment variable.")
+      self.ghToken = os.environ["GH_ACCESS_TOKEN"]
+    
+      self.verbose = options.verbose
+      self.confirm = not options.auto_confirm
+      self.nextRelease = options.nextRelease
+      self.releaseType = options.releaseType
   
-    self.verbose = options.verbose
-    self.confirm = not options.auto_confirm
-    self.nextRelease = options.nextRelease
-    self.releaseType = options.releaseType
-
-    self.remote = options.remote
-  
-    if self.releaseType not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
-      die("Invalid semantic release type \"%s\"." % self.releaseType)
-  
-    # Unpublished feature: first argument can be a path to a repository location.
-    # Currently used for testing this script.
-    if len(args) > 0:
-      self.repoRootPath = os.path.abspath(args[0])
-  
-    self.confirmUserHasPushAccess()
+      self.remote = options.remote
+    
+      if self.releaseType not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
+        die("Invalid semantic release type \"%s\"." % self.releaseType)
+    
+      # Unpublished feature: first argument can be a path to a repository location.
+      # Currently used for testing this script.
+      if len(args) > 0:
+        self.repoRootPath = os.path.abspath(args[0])
+    
+      self.confirmUserHasPushAccess()
+    finally:
+      os.chdir(cwd)
 
 
   def release(self):
@@ -499,18 +522,19 @@ class Release(object):
   
       self.nextRelease = nextRelease
   
-      print "\n ***************************************"
-      print   " * Executing %s release to %s" % (releaseType, releaseVersion)
-      print   " ***************************************\n"
+      print ""
+      print " ***************************************"
+      print " * Executing %s %s release to %s" % (self.name, releaseType, releaseVersion)
+      print " ***************************************\n"
       print "  > Updating version from %s to %s" % (self.devVersion, releaseVersion)
       print "  > Previous release was %s" % previousVersion
       print "  > Next development version will be %s" % nextRelease
   
       if self.confirm:
         proceed = queryYesNo(
-          "\n\t** WARNING **: You're about to release NuPIC %s (%s).\n"
+          "\n\t** WARNING **: You're about to release %s %s (%s).\n"
           "\tThis is a big deal. Are you sure you know what you're doing?"
-          % (releaseVersion, releaseType)
+          % (self.name, releaseVersion, releaseType)
         )
         if not proceed:
           die(
@@ -526,8 +550,8 @@ class Release(object):
       self.createDevelopmentVersion()
   
       if self.options.dryRun:
-        print "\n%s was committed and tagged locally but not pushed to %s." \
-              % (self.releaseVersion, self.remote)
+        print "\n%s %s was committed and tagged locally but not pushed to %s." \
+              % (self.name, self.releaseVersion, self.remote)
         print "To reset your local repository to the state it was in before this " \
               "process:"
         print "\tgit reset --hard upstream/master"
