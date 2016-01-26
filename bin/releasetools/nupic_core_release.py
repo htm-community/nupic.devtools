@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
@@ -14,21 +12,25 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # ----------------------------------------------------------------------
-import sys
-import os
+import subprocess
 
-from releasetools.nupic_release import NupicRelease
+from releasetools import Release
 
-if __name__ == "__main__":
 
-  if "NUPIC" not in os.environ:
-    print("Set the NUPIC environment variable.")
-    exit(-1)
+class NupicCoreRelease(Release):
+
+
+  def commitRelease(self):
+    super(NupicCoreRelease, self).commitRelease()
+    self.releaseSha = subprocess.check_output(
+      "git rev-parse HEAD", shell=True
+    ).strip()
   
-  release = NupicRelease(
-    sys.argv[1:], 
-    os.environ["NUPIC"]
-  )
+  
+  def release(self):
+    super(NupicCoreRelease, self).release()
+    return self.getReleaseSha()
 
-  release.check()
-  release.release()
+
+  def getReleaseSha(self):
+    return self.releaseSha

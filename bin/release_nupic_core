@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -16,41 +16,19 @@
 # ----------------------------------------------------------------------
 import sys
 import os
-import subprocess
 
-from releasetools import Release
-
-# Files that will be modified.
-DOXYFILE = "Doxyfile"
-
-
-class NupicCoreRelease(Release):
-
-  
-  def commitRelease(self):
-    super(NupicCoreRelease, self).commitRelease()
-    self.releaseSha = subprocess.check_output(
-      "git rev-parse HEAD", shell=True
-    ).strip()
-
-
-  def getReleaseSha(self):
-    return self.releaseSha
-
+from releasetools.nupic_core_release import NupicCoreRelease
 
 if __name__ == "__main__":
-  
+
   if "NUPIC_CORE" not in os.environ:
     print("Set the NUPIC_CORE environment variable.")
     exit(-1)
-  
+
   release = NupicCoreRelease(
     sys.argv[1:], 
-    os.environ["NUPIC_CORE"],
-    DOXYFILE
+    os.environ["NUPIC_CORE"]
   )
 
   release.check()
   release.release()
-  
-  print release.getReleaseSha()

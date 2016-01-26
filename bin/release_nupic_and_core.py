@@ -18,17 +18,32 @@ import sys
 import os
 
 from releasetools.nupic_release import NupicRelease
+from releasetools.nupic_core_release import NupicCoreRelease
 
 if __name__ == "__main__":
 
   if "NUPIC" not in os.environ:
     print("Set the NUPIC environment variable.")
     exit(-1)
-  
-  release = NupicRelease(
+  if "NUPIC_CORE" not in os.environ:
+    print("Set the NUPIC_CORE environment variable.")
+    exit(-1)
+
+  coreRelease = NupicCoreRelease(
+    sys.argv[1:], 
+    os.environ["NUPIC_CORE"]
+  )
+  nupicRelease = NupicRelease(
     sys.argv[1:], 
     os.environ["NUPIC"]
   )
+  
+  coreRelease.check()
+  nupicRelease.check()
 
-  release.check()
-  release.release()
+  
+  coreReleaseSha = coreRelease.release()
+  
+  nupicRelease.release(coreReleaseSha)
+
+

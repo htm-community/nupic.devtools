@@ -1,3 +1,17 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# ----------------------------------------------------------------------
 import os
 import sys
 import subprocess
@@ -11,6 +25,7 @@ from libsaas.http import HTTPError
 README_FILE = "README.md"
 VERSION_FILE = "VERSION"
 CHANGELOG_FILE = "CHANGELOG.md"
+DOXY_FILE = "Doxyfile"
 
 BUGFIX_RELEASE = "bugfix"
 MINOR_RELEASE = "minor"
@@ -199,13 +214,12 @@ def getReleaseNotes(release_number):
 class Release(object):
 
 
-  def __init__(self, cliArgs, repoRootPath, doxyFilePath):
+  def __init__(self, cliArgs, repoRootPath):
     parser = createOptionsParser()
     (options, args) = parser.parse_args(cliArgs)
     self.options = options
     self.args = args
     self.repoRootPath = repoRootPath
-    self.doxyFilePath = doxyFilePath
     self.verbose = None
     self.remote = None
     self.releaseType = None
@@ -220,6 +234,14 @@ class Release(object):
   def debug(self, msg):
     if self.verbose:
       print msg
+
+
+  def getReadmePath(self):
+    return README_FILE
+
+
+  def getDoxyFilePath(self):
+    return DOXY_FILE
 
 
   def replaceInFile(self, from_value, to_value, file_path):
@@ -359,9 +381,9 @@ class Release(object):
     # In the README, we want to replace the last release version with the next
     # release version.
     self.debug("\tUpdating README.md...")
-    self.replaceInFile(self.previousVersion, releaseVersion, README_FILE)
+    self.replaceInFile(self.previousVersion, releaseVersion, self.getReadmePath())
     # These files can be updated with a simple find/replace:
-    for target_file in [VERSION_FILE, self.doxyFilePath]:
+    for target_file in [VERSION_FILE, self.getDoxyFilePath()]:
       self.debug("\tUpdating %s..." % target_file)
       self.replaceInFile(self.devVersion, releaseVersion, target_file)
     
@@ -379,7 +401,7 @@ class Release(object):
     self.replaceInFile(lastVersion, nextRelease, VERSION_FILE)
   
     self.debug("\tUpdating Doxyfile...")
-    self.replaceInFile(lastVersion, nextRelease, self.doxyFilePath)
+    self.replaceInFile(lastVersion, nextRelease, self.getDoxyFilePath())
   
     print "\nCommitting dev version..."
     git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
