@@ -26,29 +26,31 @@ DOXYFILE = "docs/Doxyfile"
 REQUIREMENTS_FILE = "external/common/requirements.txt"
 
 
-def updateNupicBindingsVersion(release):
-  print "\nUpdating nupic.bindings version number in README.md..."
-  required_bindings_version = None
-  current_bindings_version = None
-  with open(REQUIREMENTS_FILE, "r") as f:
-    for line in f.readlines():
-      if line.startswith("nupic.bindings"):
-        required_bindings_version = line.split("==")[-1].strip()
-  if required_bindings_version is None:
-    raise Exception("Could not identify nupic.bindings version from %s."
-                    % REQUIREMENTS_FILE)
-  with open(README_FILE, "r") as f:
-    for line in f.readlines():
-      if "nupic.bindings/nupic.bindings-" in line:
-        # Find the nupic.bindings version number to replace
-        current_bindings_version = line.split("/")[-1].split("-")[1].strip()
-  if required_bindings_version != current_bindings_version:
-    print "Updating nupic.bindings version from %s to %s" \
-          % (current_bindings_version, required_bindings_version)
-    release.replaceInFile(
-      current_bindings_version, required_bindings_version, README_FILE
-    )
-
+class NupicRelease(Release):
+  
+  def updateFiles(self, gitlog):
+    super(NupicRelease, self).updateFiles(gitlog)
+    print "\nUpdating nupic.bindings version number in README.md..."
+    required_bindings_version = None
+    current_bindings_version = None
+    with open(REQUIREMENTS_FILE, "r") as f:
+      for line in f.readlines():
+        if line.startswith("nupic.bindings"):
+          required_bindings_version = line.split("==")[-1].strip()
+    if required_bindings_version is None:
+      raise Exception("Could not identify nupic.bindings version from %s."
+                      % REQUIREMENTS_FILE)
+    with open(README_FILE, "r") as f:
+      for line in f.readlines():
+        if "nupic.bindings/nupic.bindings-" in line:
+          # Find the nupic.bindings version number to replace
+          current_bindings_version = line.split("/")[-1].split("-")[1].strip()
+    if required_bindings_version != current_bindings_version:
+      print "Updating nupic.bindings version from %s to %s" \
+            % (current_bindings_version, required_bindings_version)
+      self.replaceInFile(
+        current_bindings_version, required_bindings_version, README_FILE
+      )
 
 
 # Start here
@@ -59,11 +61,11 @@ if __name__ == "__main__":
     print("Set the NUPIC environment variable.")
     exit(-1)
   
-  release = Release(
+  release = NupicRelease(
     sys.argv[1:], 
     os.environ["NUPIC"],
     DOXYFILE
   )
 
   release.check()
-  release.release(updateNupicBindingsVersion)
+  release.release()
