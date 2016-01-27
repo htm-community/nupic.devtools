@@ -15,21 +15,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # ----------------------------------------------------------------------
 import sys
-import os
 
 from releasetools import NupicRelease
 
 
 if __name__ == "__main__":
 
-  if "NUPIC" not in os.environ:
-    print("Set the NUPIC environment variable.")
-    exit(-1)
-  
-  release = NupicRelease(
-    sys.argv[1:], 
-    os.environ["NUPIC"]
-  )
-
+  release = NupicRelease()
+  release.initialize(sys.argv[1:])
   release.check()
   release.release()

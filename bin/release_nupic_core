@@ -26,10 +26,20 @@ if __name__ == "__main__":
     print("Set the NUPIC_CORE environment variable.")
     exit(-1)
 
-  release = NupicCoreRelease(
-    sys.argv[1:], 
-    os.environ["NUPIC_CORE"]
-  )
-
+  release = NupicCoreRelease()
+  release.initialize(sys.argv[1:])
   release.check()
-  release.release()
+  coreVersion, coreReleaseSha, coreDevelopmentSha = release.release()
+  
+  print 
+  print "NuPIC Core Released: %s" % coreVersion
+  print "NuPIC Core Release SHA: %s" % coreReleaseSha
+  print "NuPIC Core HEAD SHA: %s" % coreDevelopmentSha
+  print
+  print "To release NuPIC, wait for NuPIC Core release deployment to succeed"
+  print "and use the SHAs above:"
+  print
+  print "    release_nupic " \
+        "--core-release-version=%s " \
+        "--core-release-sha=%s " \
+        "--core-head-sha=%s" % (coreVersion, coreReleaseSha, coreDevelopmentSha)

@@ -177,20 +177,6 @@ def findVersions(devVersion, releaseType):
   return previousVersion, releaseVersion
 
 
-def getNextReleaseVersion(thisRelease=None):
-  if thisRelease:
-    last_version = thisRelease
-  else:
-    with open(VERSION_FILE, "r") as f:
-      last_version = f.read().replace('\n', '')
-  if last_version[-5:] == DEV_SUFFIX:
-    last_version = last_version[0:(0-len(DEV_SUFFIX))]
-  dev_split = [int(i) for i in last_version.split('.')]
-  dev_split[-1] += 1
-  next_version = ".".join([str(i) for i in dev_split])
-  return "%s%s" % (next_version, DEV_SUFFIX)
-
-
 def pause(message):
   sys.stdout.write(message + " To resume this script, press enter.")
   raw_input()
@@ -214,12 +200,10 @@ def getReleaseNotes(release_number):
 class Release(object):
 
 
-  def __init__(self, cliArgs, repoRootPath, name="Unknown"):
-    parser = createOptionsParser()
-    (options, args) = parser.parse_args(cliArgs)
-    self.options = options
-    self.args = args
+  def __init__(self, repoRootPath, name="Unknown"):
     self.repoRootPath = repoRootPath
+    self.options = None
+    self.args = None
     self.name = name
     self.releaseSha = None
     self.devSha = None
@@ -232,40 +216,40 @@ class Release(object):
     self.devVersion = None
     self.previousVersion = None
     self.releaseVersion = None
+    self.parser = createOptionsParser()
 
 
-  def debug(self, msg):
+  def _debug(self, msg):
     if self.verbose:
       print msg
+    
 
-
-  def getReleaseSha(self):
-    return self.releaseSha
-
-
-  def getDevelopmentSha(self):
-    return self.devSha
-
-
-  def getReadmePath(self):
-    return README_FILE
-
-
-  def getDoxyFilePath(self):
-    return DOXY_FILE
-
-
-  def replaceInFile(self, from_value, to_value, file_path):
-    with open(file_path, "r") as f:
+  def _replaceInFile(self, fromValue, toValue, filePath):
+    self._debug("\tReplacing %s with %s in %s..." % (fromValue, toValue, filePath))
+    with open(filePath, "r") as f:
       contents = f.read()
-    with open(file_path, "wb") as f:
-      f.write(contents.replace(from_value, to_value))
+    with open(filePath, "wb") as f:
+      f.write(contents.replace(fromValue, toValue))
 
 
-  def getGitLog(self):
+  def _getNextReleaseVersion(self, thisRelease=None):
+    if thisRelease:
+      lastVersion = thisRelease
+    else:
+      with open(VERSION_FILE, "r") as f:
+        lastVersion = f.read().replace('\n', '')
+    if lastVersion[-5:] == DEV_SUFFIX:
+      lastVersion = lastVersion[0:(0-len(DEV_SUFFIX))]
+    devSplit = [int(i) for i in lastVersion.split('.')]
+    devSplit[-1] += 1
+    nextVersion = ".".join([str(i) for i in devSplit])
+    return "%s%s" % (nextVersion, DEV_SUFFIX)
+
+
+  def _getGitLog(self):
     previousVersion = self.previousVersion
     gitCommand = "git log %s..HEAD --oneline" % previousVersion
-    self.debug(gitCommand)
+    self._debug(gitCommand)
     # These are all the commit messages since the last release.
     gitlog = subprocess.check_output(gitCommand, shell=True).strip().split("\n")
     # Remove the last log line, because it will just be a commit bumping the
@@ -274,45 +258,45 @@ class Release(object):
     return gitlog
 
 
-  def commitRelease(self):
+  def _commitRelease(self):
     print "\nCommitting release..."
-    git_command = "git commit -am \"Release %s.\" --no-verify" % self.releaseVersion
-    self.debug(git_command)
-    subprocess.call(git_command, shell=True)
+    gitCommand = "git commit -am \"Release %s.\" --no-verify" % self.releaseVersion
+    self._debug(gitCommand)
+    subprocess.call(gitCommand, shell=True)
     self.releaseSha = subprocess.check_output(
       "git rev-parse HEAD", shell=True
     ).strip()
 
 
-  def releaseTagExists(self):
+  def _releaseTagExists(self):
     tag = self.releaseVersion
     gitCommand = "git tag"
-    self.debug(gitCommand)
+    self._debug(gitCommand)
     existingTags = subprocess.check_output(gitCommand, shell=True).strip().split("\n")
     return tag in existingTags
 
 
-  def tagRelease(self):
+  def _tagRelease(self):
     releaseVersion = self.releaseVersion
     print "\nTagging release..."
-    if self.releaseTagExists():
+    if self._releaseTagExists():
       delete_tag = queryYesNo(
         "Tag %s already exists! Delete it?" % releaseVersion
       )
       if delete_tag:
         git_command = "git tag -d %s" % releaseVersion
-        self.debug(git_command)
+        self._debug(git_command)
         subprocess.call(git_command, shell=True)
       else:
         die("A tag for release %s already exists." % releaseVersion)
     git_command = "git tag -a %s -m \"Release %s\"" \
                   % (releaseVersion, releaseVersion)
-    self.debug(git_command)
+    self._debug(git_command)
     subprocess.call(git_command, shell=True)
 
 
-  def repoNeedsUpdate(self):
-    debug = self.debug
+  def _repoNeedsUpdate(self):
+    debug = self._debug
     remote = self.remote
     debug("Checking if local repo needs to be synced with %s..." % remote)
   
@@ -330,31 +314,31 @@ class Release(object):
     return len(gitlog) > 0
 
 
-  def pushRelease(self):
+  def _pushRelease(self):
     remote = self.remote
     print "\nPushing to %s..." % remote
     git_command = "git push %s master" % remote
-    self.debug(git_command)
+    self._debug(git_command)
     subprocess.call(git_command, shell=True)
     git_command = "git push %s %s" % (remote, self.releaseVersion)
-    self.debug(git_command)
+    self._debug(git_command)
     subprocess.call(git_command, shell=True)
 
 
-  def confirmUserHasPushAccess(self):
+  def _confirmUserHasPushAccess(self):
     remote = self.remote
-    self.debug("Checking if user has push access to %s %s..." % (self.name, remote))
+    self._debug("Checking if user has push access to %s %s..." % (self.name, remote))
     gitCommand = "git push --dry-run %s master" % remote
-    self.debug(gitCommand)
+    self._debug(gitCommand)
     status = subprocess.call(gitCommand, shell=True)
     # User only has push access if exit status of the push call was 0.
     if not status == 0:
         die("You must have push access to remote \"%s\" to create a release." % remote)
 
 
-  def updateChangelog(self, gitlog, release_version):
+  def _updateChangelog(self, gitlog, release_version):
     # Changelog needs a little more care.
-    self.debug("\tUpdating CHANGELOG.md...")
+    self._debug("\n\tUpdating CHANGELOG.md...")
     # This is a bit more complex than a substitution.
     with open(CHANGELOG_FILE, "r") as f:
       changelog_contents = f.readlines()
@@ -389,38 +373,42 @@ class Release(object):
       pause("Edit the CHANGELOG.md file now and save without committing.")
 
 
-  def updateFiles(self, gitlog):
+  def _updateFilesForRelease(self, gitlog):
     releaseVersion = self.releaseVersion
-    print "\nUpdating files..."
+    print "\nUpdating files for release..."
     # In the README, we want to replace the last release version with the next
     # release version.
-    self.debug("\tUpdating README.md...")
-    self.replaceInFile(self.previousVersion, releaseVersion, self.getReadmePath())
+    self._debug("\tUpdating README.md...")
+    self._replaceInFile(self.previousVersion, releaseVersion, self.getReadmePath())
     # These files can be updated with a simple find/replace:
     for target_file in [VERSION_FILE, self.getDoxyFilePath()]:
-      self.debug("\tUpdating %s..." % target_file)
-      self.replaceInFile(self.devVersion, releaseVersion, target_file)
+      self._debug("\tUpdating %s..." % target_file)
+      self._replaceInFile(self.devVersion, releaseVersion, target_file)
     
-    self.updateChangelog(gitlog, releaseVersion)
+    self._updateChangelog(gitlog, releaseVersion)
 
 
-  def createDevelopmentVersion(self):
+  def _updateFilesForNextDevelopmentVersion(self):
+    print "\nUpdating files for next development version..."
     lastVersion = self.releaseVersion
     nextRelease = self.nextRelease
+    self._debug("\tUpdating VERSION...")
+    self._replaceInFile(lastVersion, nextRelease, VERSION_FILE)
+    self._debug("\tUpdating Doxyfile...")
+    self._replaceInFile(lastVersion, nextRelease, self.getDoxyFilePath())
+
+
+
+  def _createDevelopmentVersion(self):
+    nextRelease = self.nextRelease
     remote = self.remote
-    print "\nUpdating version from %s to %s." % (lastVersion, nextRelease)
-  
-    print "\nUpdating files..."
-    self.debug("\tUpdating VERSION...")
-    self.replaceInFile(lastVersion, nextRelease, VERSION_FILE)
-  
-    self.debug("\tUpdating Doxyfile...")
-    self.replaceInFile(lastVersion, nextRelease, self.getDoxyFilePath())
+
+    self._updateFilesForNextDevelopmentVersion()
   
     print "\nCommitting dev version..."
     git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
                   % nextRelease
-    self.debug(git_command)
+    self._debug(git_command)
     subprocess.call(git_command, shell=True)
     self.devSha = subprocess.check_output(
       "git rev-parse HEAD", shell=True
@@ -432,7 +420,7 @@ class Release(object):
       subprocess.call(git_command, shell=True)
 
 
-  def createGithubRelease(self, tag, changes):
+  def _createGithubRelease(self, tag, changes):
     print "\nCreating Release %s in GitHub..." % tag
     gh = github.GitHub(self.ghToken)
     gh_repo = gh.repo("numenta", "nupic")
@@ -444,9 +432,9 @@ class Release(object):
     return release["html_url"]
 
 
-  def createRelease(self):
+  def _createRelease(self):
     dryRun = self.options.dryRun
-    gitlog = self.getGitLog()
+    gitlog = self._getGitLog()
   
     if len(gitlog) == 0:
       die("Release contains no changes. Bailing out!")
@@ -456,15 +444,41 @@ class Release(object):
     # Strip the SHAs off the beginnings of the commit messages.
     gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
   
-    self.updateFiles(gitlog)
-    self.commitRelease()
-    self.tagRelease()
+    self._updateFilesForRelease(gitlog)
+    self._commitRelease()
+    self._tagRelease()
   
     if not dryRun:
-      self.pushRelease()
+      self._pushRelease()
 
 
   #### PUBLIC ####
+
+
+  def initialize(self, cliArgs):
+    (options, args) = self.parser.parse_args(cliArgs)
+    self.options = options
+    self.args = args
+
+
+  def getReleaseSha(self):
+    return self.releaseSha
+
+
+  def getDevelopmentSha(self):
+    return self.devSha
+
+
+  def getParser(self):
+    return self.parser
+
+
+  def getReadmePath(self):
+    return README_FILE
+
+
+  def getDoxyFilePath(self):
+    return DOXY_FILE
 
 
   def check(self):
@@ -494,7 +508,7 @@ class Release(object):
       if len(args) > 0:
         self.repoRootPath = os.path.abspath(args[0])
     
-      self.confirmUserHasPushAccess()
+      self._confirmUserHasPushAccess()
     finally:
       os.chdir(cwd)
 
@@ -516,7 +530,7 @@ class Release(object):
       self.releaseVersion = releaseVersion
   
       if nextRelease is None:
-        nextRelease = getNextReleaseVersion(releaseVersion)
+        nextRelease = self._getNextReleaseVersion(releaseVersion)
       elif nextRelease[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
         nextRelease += DEV_SUFFIX
   
@@ -542,12 +556,12 @@ class Release(object):
             "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
           )
   
-      if self.repoNeedsUpdate():
+      if self._repoNeedsUpdate():
         die("Your local repo is not up to date with upstream/master, please sync!")
   
-      self.createRelease()
+      self._createRelease()
 
-      self.createDevelopmentVersion()
+      self._createDevelopmentVersion()
   
       if self.options.dryRun:
         print "\n%s %s was committed and tagged locally but not pushed to %s." \
@@ -558,7 +572,7 @@ class Release(object):
         print "\tgit tag -d %s" % self.releaseVersion
       else:
         try:
-          release_url = self.createGithubRelease(
+          release_url = self._createGithubRelease(
             self.releaseVersion, getReleaseNotes(self.releaseVersion)
           )
           print "See %s" % release_url
