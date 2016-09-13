@@ -1,10 +1,12 @@
+> **WARNING**: While the NuPIC Core release script still works for publishing new `nupic.bindings` to PyPi, the NuPIC release script is now deprecated after the merge of https://github.com/numenta/nupic/pull/3314. The new release process for both `nupic.bindings` and `nupic` will be tied to our new [Bamboo CI instance](https://ci.numenta.com/).
+
 # NuPIC Developer Tools
 
 This repository contains developer tools for NuPIC. Currently, this only includes code to create new releases for NuPIC and NuPIC Core.
 
 ## NuPIC / NuPIC Core Release Scripts
 
-This code pushes a new release using git tags and the GitHub API. Users must have push access and a GitHub access token. NuPIC Core should be released soon after the NuPIC release. 
+This code pushes a new release using git tags and the GitHub API. Users must have push access and a GitHub access token. NuPIC should be released soon after the NuPIC Core release. 
 
 ## Requirements:
 - git
