@@ -604,3 +604,5 @@ class Release(object):
     finally:
       # Always change back to original directory, even if fatal errors occur.
       os.chdir(cwd)
+
+    return self.releaseVersion

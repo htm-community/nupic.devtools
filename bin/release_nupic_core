@@ -32,7 +32,6 @@ if __name__ == "__main__":
   coreVersion, coreReleaseSha, coreDevelopmentSha = release.release()
 
   print
-  print "NuPIC Core Released!"
+  print "SUCCESS! Released NuPIC Core %s" % coreVersion
   print "%s at commit SHA %s" % (coreVersion, coreReleaseSha)
   print "new HEAD of master is %s" % coreDevelopmentSha
-  print "SUCCESS"

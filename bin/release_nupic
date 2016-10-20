@@ -24,5 +24,6 @@ if __name__ == "__main__":
   release = NupicRelease()
   release.initialize(sys.argv[1:])
   release.check()
-  release.release()
-  print "SUCCESS"
+  version = release.release()
+  print
+  print "SUCCESS! Released NuPIC %s" % version
