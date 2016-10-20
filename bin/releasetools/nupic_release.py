@@ -49,3 +49,7 @@ class NupicRelease(Release):
       for line in f.readlines():
         if line.startswith("nupic.bindings"):
           return line.split("=").pop()
+
+
+  def getGithubRepo(self):
+    return "nupic"

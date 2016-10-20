@@ -26,10 +26,14 @@ class NupicCoreRelease(Release):
   def __init__(self):
     if NAME not in os.environ:
       raise ValueError("You must set a '%s' environment var!" % NAME)
-    rootPath = os.environ[NAME] 
+    rootPath = os.environ[NAME]
     super(NupicCoreRelease, self).__init__(rootPath, NAME)
 
 
   def release(self):
     super(NupicCoreRelease, self).release()
     return self.releaseVersion, self.getReleaseSha(), self.getDevelopmentSha()
+
+
+  def getGithubRepo(self):
+    return "nupic.core"

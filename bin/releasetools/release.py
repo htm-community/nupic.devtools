@@ -423,7 +423,7 @@ class Release(object):
   def _createGithubRelease(self, tag, changes):
     print "\nCreating Release %s in GitHub..." % tag
     gh = github.GitHub(self.ghToken)
-    gh_repo = gh.repo("numenta", "nupic")
+    gh_repo = gh.repo(self.getGithubOrg(), self.getGithubRepo())
     release = gh_repo.releases().create({
       "name": tag,
       "tag_name": tag,
@@ -479,6 +479,14 @@ class Release(object):
 
   def getDoxyFilePath(self):
     return DOXY_FILE
+
+
+  def getGithubOrg(self):
+    return "numenta"
+
+
+  def getGithubRepo(self):
+    pass
 
 
   def getAdditionalUserMessage(self):
