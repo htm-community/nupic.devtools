@@ -481,6 +481,15 @@ class Release(object):
     return DOXY_FILE
 
 
+  def getAdditionalUserMessage(self):
+    """
+    This method is meant to be overridden by subclasses to provide more user
+    information that will be displayed to the user before the script starts a
+    release.
+    """
+    return []
+
+
   def check(self):
     options = self.options
     args = self.args
@@ -548,6 +557,9 @@ class Release(object):
       print "  > Previous release was %s" % previousVersion
       print "  > This release is %s" % releaseVersion
       print "  > Next development version will be %s" % nextRelease
+
+      for line in self.getAdditionalUserMessage():
+        print "  > %s" % line
 
       if self.confirm:
         proceed = queryYesNo(
