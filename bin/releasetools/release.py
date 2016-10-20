@@ -46,7 +46,7 @@ def createOptionsParser():
     usage="%prog [options]\n\n"
           """
   Pushes a new NuPIC release using git tags and the GitHub API. Users must have push access and a GitHub access token.
-  
+
   ## Requirements:
   - git
   - [GitHub access token](https://github.com/blog/1509-personal-api-tokens)
@@ -54,15 +54,15 @@ def createOptionsParser():
   - `export NUPIC=<path-to-nupic-checkout>`
   - Push access to target git repository
   - `pip install libsaas`
-  
+
   ## Usage
-  
+
   > ./release_nupic [options]
-  
+
   It's assumed you're releasing NuPIC, so the value of the `NUPIC` environment variable will be used for the repository location.
           """
   )
-  
+
   parser.add_option(
     "-v",
     "--verbose",
@@ -96,9 +96,9 @@ def createOptionsParser():
     "--next-release",
     default=None,
     dest="nextRelease",
-    help="After this release has completed, what will the next release version"
-         "be (if not supplied, it will rollover to bugfix release. You won't"
-         "need to use this option unless you need to the next release to break"
+    help="After this release has completed, what will the next release version "
+         "be (if not supplied, it will rollover to bugfix release. You won't "
+         "need to use this option unless you need to the next release to break "
          "semantic versioning.")
   parser.add_option(
     "-s",
@@ -108,7 +108,7 @@ def createOptionsParser():
     help="Type of semantic release to execute. Must be either \"%s\", "
          "\"%s\", or \"%s\" (default \"%s\")."
          % (BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE, BUGFIX_RELEASE))
-  
+
   return parser
 
 
@@ -222,7 +222,7 @@ class Release(object):
   def _debug(self, msg):
     if self.verbose:
       print msg
-    
+
 
   def _replaceInFile(self, fromValue, toValue, filePath):
     self._debug("\tReplacing %s with %s in %s..." % (fromValue, toValue, filePath))
@@ -299,17 +299,17 @@ class Release(object):
     debug = self._debug
     remote = self.remote
     debug("Checking if local repo needs to be synced with %s..." % remote)
-  
+
     gitCommand = "git fetch %s" % remote
     debug(gitCommand)
     subprocess.call(gitCommand, shell=True)
-  
+
     # This gives us a log of all the commits on <remote>/master that aren't on
     # the local checkout's HEAD.
     gitCommand = "git log HEAD..%s/master --oneline" % remote
     debug(gitCommand)
     gitlog = subprocess.check_output(gitCommand, shell=True).strip()
-  
+
     # If the output is not empty, then the repo needs updating.
     return len(gitlog) > 0
 
@@ -384,7 +384,7 @@ class Release(object):
     for target_file in [VERSION_FILE, self.getDoxyFilePath()]:
       self._debug("\tUpdating %s..." % target_file)
       self._replaceInFile(self.devVersion, releaseVersion, target_file)
-    
+
     self._updateChangelog(gitlog, releaseVersion)
 
 
@@ -404,7 +404,7 @@ class Release(object):
     remote = self.remote
 
     self._updateFilesForNextDevelopmentVersion()
-  
+
     print "\nCommitting dev version..."
     git_command = "git commit -am \"Continuing work on %s.\" --no-verify" \
                   % nextRelease
@@ -435,19 +435,19 @@ class Release(object):
   def _createRelease(self):
     dryRun = self.options.dryRun
     gitlog = self._getGitLog()
-  
+
     if len(gitlog) == 0:
       die("Release contains no changes. Bailing out!")
-  
+
     print "This release contains %i commit(s)." % len(gitlog)
-  
+
     # Strip the SHAs off the beginnings of the commit messages.
     gitlog = [" ".join(line.split(" ")[1:]) for line in gitlog]
-  
+
     self._updateFilesForRelease(gitlog)
     self._commitRelease()
     self._tagRelease()
-  
+
     if not dryRun:
       self._pushRelease()
 
@@ -487,27 +487,27 @@ class Release(object):
 
     cwd = os.getcwd()
     os.chdir(self.repoRootPath)
-    
+
     try:
       if "GH_ACCESS_TOKEN" not in os.environ:
         die("Set the GH_ACCESS_TOKEN environment variable.")
       self.ghToken = os.environ["GH_ACCESS_TOKEN"]
-    
+
       self.verbose = options.verbose
       self.confirm = not options.auto_confirm
       self.nextRelease = options.nextRelease
       self.releaseType = options.releaseType
-  
+
       self.remote = options.remote
-    
+
       if self.releaseType not in [BUGFIX_RELEASE, MINOR_RELEASE, MAJOR_RELEASE]:
         die("Invalid semantic release type \"%s\"." % self.releaseType)
-    
+
       # Unpublished feature: first argument can be a path to a repository location.
       # Currently used for testing this script.
       if len(args) > 0:
         self.repoRootPath = os.path.abspath(args[0])
-    
+
       self._confirmUserHasPushAccess()
     finally:
       os.chdir(cwd)
@@ -522,47 +522,54 @@ class Release(object):
     try:
       with open(VERSION_FILE, "r") as f:
         self.devVersion = f.read().strip()
-  
+
       previousVersion, releaseVersion = findVersions(
         self.devVersion, self.releaseType
       )
       self.previousVersion = previousVersion
       self.releaseVersion = releaseVersion
-  
+
       if nextRelease is None:
         nextRelease = self._getNextReleaseVersion(releaseVersion)
       elif nextRelease[(0 - len(DEV_SUFFIX)):] != DEV_SUFFIX:
         nextRelease += DEV_SUFFIX
-  
+
       self.nextRelease = nextRelease
-  
+
       print ""
       print " ***************************************"
-      print " * Executing %s %s release to %s" % (self.name, releaseType, releaseVersion)
+      print " * RELEASING: "
+      print " *            %s %s (%s)" % (self.name, releaseVersion, releaseType)
+      if self.options.dryRun:
+        print " *            [DRY RUN]"
       print " ***************************************\n"
+      print " (Not what you wanted? Use --help for more options.)\n"
       print "  > Updating version from %s to %s" % (self.devVersion, releaseVersion)
       print "  > Previous release was %s" % previousVersion
+      print "  > This release is %s" % releaseVersion
       print "  > Next development version will be %s" % nextRelease
-  
+
       if self.confirm:
         proceed = queryYesNo(
-          "\n\t** WARNING **: You're about to release %s %s (%s).\n"
-          "\tThis is a big deal. Are you sure you know what you're doing?"
+          "\n\t** WARNING **\n\n"
+          "\tYou're about to release %s %s (%s).\n"
+          "\tOnly NuPIC Committers are allowed to run this script.\n"
+          "\tAre you sure you know what you're doing?"
           % (self.name, releaseVersion, releaseType)
         )
         if not proceed:
           die(
-            "\nRight. Better safe than sorry. "
-            "Email hackers@lists.numenta.org to discuss NuPIC releases.\n"
+            "\nBetter safe than sorry!\n"
+            "\nVisit https://discourse.numenta.org/c/nupic/developers to discuss NuPIC releases.\n"
           )
-  
+
       if self._repoNeedsUpdate():
         die("Your local repo is not up to date with upstream/master, please sync!")
-  
+
       self._createRelease()
 
       self._createDevelopmentVersion()
-  
+
       if self.options.dryRun:
         print "\n%s %s was committed and tagged locally but not pushed to %s." \
               % (self.name, self.releaseVersion, self.remote)
@@ -581,7 +588,7 @@ class Release(object):
           print("Error publishing release information to GitHub! But don't "
                 "worry, you can do that manually at github.com.")
         print "\nDone releasing %s." % self.releaseVersion
-  
+
     finally:
       # Always change back to original directory, even if fatal errors occur.
-      os.chdir(cwd)    
+      os.chdir(cwd)
