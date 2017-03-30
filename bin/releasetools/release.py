@@ -225,11 +225,14 @@ class Release(object):
 
 
   def _replaceInFile(self, fromValue, toValue, filePath):
-    self._debug("\tReplacing %s with %s in %s..." % (fromValue, toValue, filePath))
-    with open(filePath, "r") as f:
-      contents = f.read()
-    with open(filePath, "wb") as f:
-      f.write(contents.replace(fromValue, toValue))
+    if not os.path.isfile(filePath):
+      self._debug("\tSkipping %s (does not exist)..." % filePath)
+    else:
+      self._debug("\tReplacing %s with %s in %s..." % (fromValue, toValue, filePath))
+      with open(filePath, "r") as f:
+        contents = f.read()
+      with open(filePath, "wb") as f:
+        f.write(contents.replace(fromValue, toValue))
 
 
   def _getNextReleaseVersion(self, thisRelease=None):
