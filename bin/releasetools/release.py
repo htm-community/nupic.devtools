@@ -150,13 +150,11 @@ def die(msg):
   exit(-1)
 
 
-def findVersions(devVersion, releaseType):
+def getReleaseVersion(devVersion, releaseType):
   # Turns "X.Y.Z.dev0 into "X.Y.Z".
   expectedNextVersion = ".".join(devVersion.split(".")[:-1])
   releaseSplit = [int(i) for i in expectedNextVersion.split('.')]
-
   releaseSplit[-1] -= 1
-  previousVersion = ".".join([str(i) for i in releaseSplit])
 
   if releaseType == BUGFIX_RELEASE:
     releaseVersion = expectedNextVersion
@@ -174,7 +172,7 @@ def findVersions(devVersion, releaseType):
     releaseSplit[2] = 0
     releaseVersion = ".".join([str(i) for i in releaseSplit])
 
-  return previousVersion, releaseVersion
+  return releaseVersion
 
 
 def pause(message):
@@ -251,10 +249,10 @@ class Release(object):
 
   def _getGitLog(self):
     previousVersion = self.previousVersion
-    gitCommand = "git log %s..HEAD --oneline" % previousVersion
-    self._debug(gitCommand)
+    git_command = "git log %s..HEAD --oneline" % previousVersion
+    self._debug(git_command)
     # These are all the commit messages since the last release.
-    gitlog = subprocess.check_output(gitCommand, shell=True).strip().split("\n")
+    gitlog = subprocess.check_output(git_command, shell=True).strip().split("\n")
     # Remove the last log line, because it will just be a commit bumping the
     # version to X.Y.Z.dev0.
     del gitlog[-1]
@@ -263,9 +261,9 @@ class Release(object):
 
   def _commitRelease(self):
     print "\nCommitting release..."
-    gitCommand = "git commit -am \"Release %s.\" --no-verify" % self.releaseVersion
-    self._debug(gitCommand)
-    subprocess.call(gitCommand, shell=True)
+    git_command = "git commit -am \"Release %s.\" --no-verify" % self.releaseVersion
+    self._debug(git_command)
+    subprocess.call(git_command, shell=True)
     self.releaseSha = subprocess.check_output(
       "git rev-parse HEAD", shell=True
     ).strip()
@@ -273,9 +271,9 @@ class Release(object):
 
   def _releaseTagExists(self):
     tag = self.releaseVersion
-    gitCommand = "git tag"
-    self._debug(gitCommand)
-    existingTags = subprocess.check_output(gitCommand, shell=True).strip().split("\n")
+    git_command = "git tag"
+    self._debug(git_command)
+    existingTags = subprocess.check_output(git_command, shell=True).strip().split("\n")
     return tag in existingTags
 
 
@@ -303,18 +301,25 @@ class Release(object):
     remote = self.remote
     debug("Checking if local repo needs to be synced with %s..." % remote)
 
-    gitCommand = "git fetch %s" % remote
-    debug(gitCommand)
-    subprocess.call(gitCommand, shell=True)
+    git_command = "git fetch %s" % remote
+    debug(git_command)
+    subprocess.call(git_command, shell=True)
 
     # This gives us a log of all the commits on <remote>/master that aren't on
     # the local checkout's HEAD.
-    gitCommand = "git log HEAD..%s/master --oneline" % remote
-    debug(gitCommand)
-    gitlog = subprocess.check_output(gitCommand, shell=True).strip()
+    git_command = "git log HEAD..%s/master --oneline" % remote
+    debug(git_command)
+    gitlog = subprocess.check_output(git_command, shell=True).strip()
 
     # If the output is not empty, then the repo needs updating.
     return len(gitlog) > 0
+
+
+  def _getPreviousVersion(self):
+    git_command = "git describe --tags --abbrev=0"
+    self._debug(git_command)
+    gitlog = subprocess.check_output(git_command, shell=True).strip()
+    return gitlog
 
 
   def _pushRelease(self):
@@ -331,9 +336,9 @@ class Release(object):
   def _confirmUserHasPushAccess(self):
     remote = self.remote
     self._debug("Checking if user has push access to %s %s..." % (self.name, remote))
-    gitCommand = "git push --dry-run %s master" % remote
-    self._debug(gitCommand)
-    status = subprocess.call(gitCommand, shell=True)
+    git_command = "git push --dry-run %s master" % remote
+    self._debug(git_command)
+    status = subprocess.call(git_command, shell=True)
     # User only has push access if exit status of the push call was 0.
     if not status == 0:
         die("You must have push access to remote \"%s\" to create a release." % remote)
@@ -543,11 +548,13 @@ class Release(object):
       with open(VERSION_FILE, "r") as f:
         self.devVersion = f.read().strip()
 
-      previousVersion, releaseVersion = findVersions(
+      releaseVersion = getReleaseVersion(
         self.devVersion, self.releaseType
       )
-      self.previousVersion = previousVersion
       self.releaseVersion = releaseVersion
+
+      previousVersion = self._getPreviousVersion()
+      self.previousVersion = previousVersion
 
       if nextRelease is None:
         nextRelease = self._getNextReleaseVersion(releaseVersion)
